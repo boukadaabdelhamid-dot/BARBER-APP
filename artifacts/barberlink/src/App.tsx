@@ -100,12 +100,97 @@ function SiteHeader() {
     <header className="topbar" dir="rtl">
       <Brand />
       <nav className="nav-links" aria-label="التنقل الرئيسي">
-        <Link href="/" data-testid="link-discover">اكتشف الحلاقين</Link>
+        <Link href="/discover" data-testid="link-discover">اكتشف الحلاقين</Link>
         <Link href="/my-bookings" data-testid="link-customer-bookings">طلباتي</Link>
         <Link href="/barber" data-testid="link-barber-portal">دخول الحلاق</Link>
         <Link href="/join" className="nav-join" data-testid="link-join">انضم كحلاق</Link>
       </nav>
     </header>
+  );
+}
+
+function Welcome() {
+  const [, navigate] = useLocation();
+  const [step, setStep] = useState<'role' | 'barber-type'>('role');
+
+  return (
+    <div className="welcome-shell" dir="rtl">
+      <header className="welcome-header">
+        <Brand />
+        <span className="welcome-header-note">حلاقة قريبة منك، بخطوات أسهل</span>
+      </header>
+      <main className="welcome-main">
+        <div className="welcome-content">
+          <div className="welcome-mark"><Scissors aria-hidden="true" /></div>
+          <div className="section-label">مرحبًا بك في BarberLink</div>
+          {step === 'role' ? (
+            <>
+              <h1>كيف تريد استخدام التطبيق؟</h1>
+              <p className="welcome-description">اختر ما يناسبك لنوصلك مباشرة إلى الخطوة التالية.</p>
+              <div className="welcome-options">
+                <button
+                  type="button"
+                  className="welcome-option"
+                  onClick={() => navigate('/discover')}
+                  data-testid="button-role-customer"
+                >
+                  <span className="welcome-option-icon"><Search aria-hidden="true" /></span>
+                  <span className="welcome-option-copy">
+                    <strong>أبحث عن حلاق</strong>
+                    <small>اكتشف الحلاقين والخدمات في منطقتك</small>
+                  </span>
+                  <ArrowLeft className="welcome-option-arrow" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  className="welcome-option"
+                  onClick={() => setStep('barber-type')}
+                  data-testid="button-role-barber"
+                >
+                  <span className="welcome-option-icon"><Scissors aria-hidden="true" /></span>
+                  <span className="welcome-option-copy">
+                    <strong>أنا حلاق أو حلاقة</strong>
+                    <small>أنشئ ملفك واستقبل طلبات العملاء</small>
+                  </span>
+                  <ArrowLeft className="welcome-option-arrow" aria-hidden="true" />
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <button className="welcome-back" type="button" onClick={() => setStep('role')} data-testid="button-welcome-back">
+                <ArrowRight aria-hidden="true" /> رجوع
+              </button>
+              <h1>هل أنت حلاق أم حلاقة؟</h1>
+              <p className="welcome-description">اختر الصفة التي تناسبك للمتابعة إلى إنشاء ملفك.</p>
+              <div className="welcome-options welcome-options-compact">
+                <button
+                  type="button"
+                  className="welcome-option"
+                  onClick={() => navigate('/join?gender=male')}
+                  data-testid="button-barber-male"
+                >
+                  <span className="welcome-option-icon"><Scissors aria-hidden="true" /></span>
+                  <span className="welcome-option-copy"><strong>حلاق</strong><small>أتابع كحلاق</small></span>
+                  <ArrowLeft className="welcome-option-arrow" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  className="welcome-option"
+                  onClick={() => navigate('/join?gender=female')}
+                  data-testid="button-barber-female"
+                >
+                  <span className="welcome-option-icon"><Scissors aria-hidden="true" /></span>
+                  <span className="welcome-option-copy"><strong>حلاقة</strong><small>أتابع كحلاقة</small></span>
+                  <ArrowLeft className="welcome-option-arrow" aria-hidden="true" />
+                </button>
+              </div>
+            </>
+          )}
+          <div className="welcome-footer"><ShieldCheck aria-hidden="true" /> ملفات الحلاقين تُراجع قبل ظهورها للعملاء</div>
+        </div>
+      </main>
+    </div>
   );
 }
 
@@ -527,6 +612,7 @@ function BarberModal({
 type ServiceDraft = { name: string; durationMinutes: string; price: string };
 
 function Join() {
+  const barberGender = new URLSearchParams(window.location.search).get('gender');
   const createBarber = useCreateBarber();
   const [services, setServices] = useState<ServiceDraft[]>([{ name: '', durationMinutes: '30', price: '' }]);
   const serviceCounter = useRef(1);
@@ -573,7 +659,7 @@ function Join() {
       <SiteHeader />
       <main className="page-wrap">
         <div className="page-heading">
-          <div className="section-label">للمحترفين المستقلين</div>
+          <div className="section-label">{barberGender === 'female' ? 'انضمي كحلاقة' : barberGender === 'male' ? 'انضم كحلاق' : 'للمحترفين المستقلين'}</div>
           <h1>خلّ خبرتك توصل<br />إلى باب عملائك.</h1>
           <p>أنشئ ملفك كحلاق متنقل. بعد المراجعة، يستطيع العملاء القريبون منك اكتشاف خدماتك وإرسال طلبات حجز مباشرة.</p>
         </div>
@@ -604,7 +690,7 @@ function Join() {
               </button>
             </div>
             <Link href="/barber" className="submit-button" data-testid="link-barber-dashboard">فتح لوحة الحلاق</Link>
-            <Link href="/" className="submit-button" data-testid="link-join-home">العودة إلى اكتشاف الحلاقين</Link>
+            <Link href="/discover" className="submit-button" data-testid="link-join-home">العودة إلى اكتشاف الحلاقين</Link>
           </section>
         ) : (
           <div className="join-layout">
@@ -691,7 +777,7 @@ function Join() {
         )}
         <footer className="footer" dir="rtl">
           <div className="footer-brand"><span className="brand-mark"><Scissors aria-hidden="true" /></span> BarberLink</div>
-          <Link href="/" data-testid="link-join-footer-home"><ArrowRight size={14} /> العودة للاكتشاف</Link>
+          <Link href="/discover" data-testid="link-join-footer-home"><ArrowRight size={14} /> العودة للاكتشاف</Link>
         </footer>
       </main>
     </div>
@@ -875,7 +961,7 @@ function Admin() {
                 <div className="admin-kicker">كل شيء في مكانه</div>
                 <h2>لا توجد ملفات معلّقة.</h2>
                 <p>حين يرسل حلاق مستقل ملفه، سيظهر هنا لتراجعه قبل نشره للعملاء.</p>
-                <Link href="/" className="admin-back-link">العودة إلى الاكتشاف <ArrowLeft size={15} /></Link>
+                <Link href="/discover" className="admin-back-link">العودة إلى الاكتشاف <ArrowLeft size={15} /></Link>
               </div>
             ) : (
               <div className="review-list" data-testid="list-pending-barbers">
@@ -1025,7 +1111,7 @@ function CustomerBookings() {
             <CalendarDays aria-hidden="true" />
             <h2>لا توجد طلبات محفوظة هنا</h2>
             <p>بعد إرسال طلب موعد من هذا الجهاز، ستتمكن من متابعة رده في هذه الصفحة.</p>
-            <Link href="/" className="submit-button">اكتشف الحلاقين</Link>
+            <Link href="/discover" className="submit-button">اكتشف الحلاقين</Link>
           </div>
         ) : (
           <div className="tracking-list" data-testid="list-customer-bookings">
@@ -1140,7 +1226,7 @@ function BarberPortal() {
       <header className="admin-topbar">
         <Brand />
         <div className="admin-topbar-side">
-          <Link className="admin-back-link" href="/">اكتشف الحلاقين</Link>
+          <Link className="admin-back-link" href="/discover">اكتشف الحلاقين</Link>
           {authenticated && (
             <button className="admin-logout" type="button" onClick={signOut} disabled={logout.isPending} data-testid="button-barber-logout">
               <LogOut size={16} /> تسجيل الخروج
@@ -1266,7 +1352,8 @@ function Router() {
   return (
     <RoutedErrorBoundary>
       <Switch>
-        <Route path="/" component={Home} />
+        <Route path="/" component={Welcome} />
+        <Route path="/discover" component={Home} />
         <Route path="/join" component={Join} />
         <Route path="/admin" component={Admin} />
         <Route path="/barber" component={BarberPortal} />

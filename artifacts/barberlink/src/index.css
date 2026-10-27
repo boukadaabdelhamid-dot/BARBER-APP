@@ -122,6 +122,31 @@
 html { scroll-behavior: smooth; }
 body { min-width: 320px; }
 
+.welcome-shell { min-height:100dvh;display:flex;flex-direction:column;background:radial-gradient(ellipse at 50% 0%,#e5ece2 0,transparent 44%),#f5f2e9; }
+.welcome-header { width:min(100%,1240px);height:78px;padding:0 34px;margin:0 auto;display:flex;align-items:center;justify-content:space-between; }
+.welcome-header-note { color:#78837a;font-size:12px; }
+.welcome-main { flex:1;display:grid;place-items:center;padding:32px 20px 80px; }
+.welcome-content { width:min(100%,590px);text-align:center;animation:rise-in .35s ease-out both; }
+.welcome-mark { width:55px;height:55px;margin:0 auto 24px;display:grid;place-items:center;border-radius:18px 18px 18px 5px;background:#28584c;color:#f5f2e9;box-shadow:0 12px 28px -16px rgba(32,56,58,.7); }
+.welcome-mark svg { width:25px;height:25px; }
+.welcome-content .section-label { margin-bottom:11px; }
+.welcome-content h1 { margin:0;color:#20383a;font:700 clamp(31px,5vw,44px)/1.18 'Manrope',sans-serif;letter-spacing:-1.8px; }
+.welcome-description { margin:12px 0 30px;color:#6c7972;font-size:14px;line-height:1.7; }
+.welcome-options { display:grid;gap:12px;text-align:right; }
+.welcome-option { width:100%;min-height:91px;padding:16px 18px;display:flex;align-items:center;gap:15px;border:1px solid #e1ded4;border-radius:13px;background:rgba(252,251,247,.92);color:#20383a;text-align:right;box-shadow:0 8px 22px -21px rgba(32,56,58,.5);transition:border-color .18s,transform .18s,box-shadow .18s; }
+.welcome-option:hover { transform:translateY(-2px);border-color:#8fa99a;box-shadow:0 14px 30px -23px rgba(32,56,58,.5); }
+.welcome-option:focus-visible,.welcome-back:focus-visible { outline:3px solid rgba(40,88,76,.28);outline-offset:3px; }
+.welcome-option-icon { width:48px;height:48px;flex:none;display:grid;place-items:center;border-radius:12px;background:#e8eee5;color:#28584c; }
+.welcome-option-icon svg { width:21px;height:21px; }
+.welcome-option-copy { flex:1;display:grid;gap:5px; }
+.welcome-option-copy strong { font-size:15px;font-weight:700; }
+.welcome-option-copy small { color:#7a857d;font-size:12px;line-height:1.5; }
+.welcome-option-arrow { width:17px;height:17px;flex:none;color:#a76a4d; }
+.welcome-options-compact .welcome-option { min-height:82px; }
+.welcome-back { display:flex;align-items:center;gap:6px;margin:0 0 17px;padding:7px 0;border:0;background:transparent;color:#5f7067;font-size:12px;font-weight:700; }
+.welcome-back svg { width:15px;height:15px; }
+.welcome-footer { display:flex;justify-content:center;align-items:center;gap:8px;margin-top:29px;color:#77847b;font-size:11px; }
+.welcome-footer svg { width:16px;height:16px;color:#51806a; }
 .site-shell { min-height: 100dvh; background: #f5f2e9; }
 .topbar { height: 78px; display:flex; align-items:center; justify-content:space-between; max-width:1240px; padding:0 34px; margin:auto; }
 .brand { display:flex; align-items:center; gap:11px; color:#20383a; text-decoration:none; font:800 22px 'Manrope',sans-serif; letter-spacing:-1px; }
@@ -284,6 +309,18 @@ body { min-width: 320px; }
   .join-layout { grid-template-columns:minmax(0,1fr) 240px;gap:24px; }
 }
 @media(max-width:680px) {
+  .welcome-header { height:68px;padding:0 19px; }
+  .welcome-header-note { font-size:10px; }
+  .welcome-main { padding:28px 20px 58px;align-items:center; }
+  .welcome-content { max-width:430px; }
+  .welcome-mark { width:49px;height:49px;margin-bottom:20px;border-radius:16px 16px 16px 4px; }
+  .welcome-content h1 { letter-spacing:-1.2px;font-size:34px; }
+  .welcome-description { margin:10px 0 23px;font-size:13px; }
+  .welcome-option { min-height:83px;padding:13px 14px;gap:12px; }
+  .welcome-option-icon { width:43px;height:43px; }
+  .welcome-option-copy strong { font-size:14px; }
+  .welcome-option-copy small { font-size:11px; }
+  .welcome-footer { font-size:10px; }
   .topbar { height:auto;min-height:68px;padding:11px 18px 9px;flex-wrap:wrap;gap:8px; }
   .brand { font-size:20px; }
   .nav-links { flex:0 0 100%;justify-content:space-between;gap:7px;padding-top:8px;border-top:1px solid rgba(49,81,67,.1); }

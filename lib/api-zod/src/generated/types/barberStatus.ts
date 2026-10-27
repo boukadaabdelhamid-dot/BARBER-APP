@@ -12,4 +12,5 @@ export type BarberStatus = typeof BarberStatus[keyof typeof BarberStatus];
 export const BarberStatus = {
   active: 'active',
   pending: 'pending',
+  rejected: 'rejected',
 } as const;

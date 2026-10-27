@@ -22,6 +22,7 @@ export type BarberStatus = typeof BarberStatus[keyof typeof BarberStatus];
 export const BarberStatus = {
   active: 'active',
   pending: 'pending',
+  rejected: 'rejected',
 } as const;
 
 export interface Barber {
@@ -116,6 +117,57 @@ export interface BarberSubmission {
   id: number;
   status: BarberSubmissionStatus;
   message: string;
+}
+
+export interface AdminSession {
+  authenticated: boolean;
+}
+
+export interface AdminLoginInput {
+  /**
+     * @minLength 1
+     * @maxLength 512
+     */
+  password: string;
+}
+
+export type BarberReviewStatus = typeof BarberReviewStatus[keyof typeof BarberReviewStatus];
+
+
+export const BarberReviewStatus = {
+  active: 'active',
+  pending: 'pending',
+  rejected: 'rejected',
+} as const;
+
+export interface BarberReview {
+  id: number;
+  name: string;
+  city: string;
+  areas: string[];
+  bio: string;
+  rating: number;
+  reviewCount: number;
+  travelFee: number;
+  currency: string;
+  phone: string;
+  /** @nullable */
+  imageUrl?: string | null;
+  status: BarberReviewStatus;
+  services: BarberService[];
+  createdAt: string;
+}
+
+export type BarberDecisionInputStatus = typeof BarberDecisionInputStatus[keyof typeof BarberDecisionInputStatus];
+
+
+export const BarberDecisionInputStatus = {
+  active: 'active',
+  rejected: 'rejected',
+} as const;
+
+export interface BarberDecisionInput {
+  status: BarberDecisionInputStatus;
 }
 
 export interface BookingInput {

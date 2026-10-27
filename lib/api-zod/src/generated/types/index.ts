@@ -6,8 +6,14 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './adminLoginInput';
+export * from './adminSession';
 export * from './barber';
+export * from './barberDecisionInput';
+export * from './barberDecisionInputStatus';
 export * from './barberInput';
+export * from './barberReview';
+export * from './barberReviewStatus';
 export * from './barberService';
 export * from './barberServiceInput';
 export * from './barberStatus';

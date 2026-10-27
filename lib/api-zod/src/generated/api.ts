@@ -37,7 +37,7 @@ export const ListBarbersResponseItem = zod.object({
   "currency": zod.string(),
   "phone": zod.string(),
   "imageUrl": zod.string().nullish(),
-  "status": zod.enum(['active', 'pending']),
+  "status": zod.enum(['active', 'pending', 'rejected']),
   "services": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -129,7 +129,7 @@ export const GetBarberResponse = zod.object({
   "currency": zod.string(),
   "phone": zod.string(),
   "imageUrl": zod.string().nullish(),
-  "status": zod.enum(['active', 'pending']),
+  "status": zod.enum(['active', 'pending', 'rejected']),
   "services": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -176,6 +176,99 @@ export const CreateBookingResponse = zod.object({
   "serviceName": zod.string(),
   "date": zod.coerce.date(),
   "time": zod.string()
+})
+
+
+/**
+ * @summary Check the current admin session
+ */
+export const GetAdminSessionResponse = zod.object({
+  "authenticated": zod.boolean()
+})
+
+
+/**
+ * @summary Start an admin session
+ */
+export const loginAdminBodyPasswordMax = 512;
+
+
+
+export const LoginAdminBody = zod.object({
+  "password": zod.string().min(1).max(loginAdminBodyPasswordMax)
+})
+
+export const LoginAdminResponse = zod.object({
+  "authenticated": zod.boolean()
+})
+
+
+/**
+ * @summary End the current admin session
+ */
+export const LogoutAdminResponse = zod.object({
+  "authenticated": zod.boolean()
+})
+
+
+/**
+ * @summary List barber profiles awaiting review
+ */
+export const ListPendingBarbersResponseItem = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "city": zod.string(),
+  "areas": zod.array(zod.string()),
+  "bio": zod.string(),
+  "rating": zod.number(),
+  "reviewCount": zod.number().int(),
+  "travelFee": zod.number(),
+  "currency": zod.string(),
+  "phone": zod.string(),
+  "imageUrl": zod.string().nullish(),
+  "status": zod.enum(['active', 'pending', 'rejected']),
+  "services": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "durationMinutes": zod.number().int(),
+  "price": zod.number()
+})),
+  "createdAt": zod.coerce.date()
+})
+export const ListPendingBarbersResponse = zod.array(ListPendingBarbersResponseItem)
+
+
+/**
+ * @summary Approve or reject a pending barber profile
+ */
+export const ModerateBarberParams = zod.object({
+  "barberId": zod.coerce.number().int()
+})
+
+export const ModerateBarberBody = zod.object({
+  "status": zod.enum(['active', 'rejected'])
+})
+
+export const ModerateBarberResponse = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "city": zod.string(),
+  "areas": zod.array(zod.string()),
+  "bio": zod.string(),
+  "rating": zod.number(),
+  "reviewCount": zod.number().int(),
+  "travelFee": zod.number(),
+  "currency": zod.string(),
+  "phone": zod.string(),
+  "imageUrl": zod.string().nullish(),
+  "status": zod.enum(['active', 'pending', 'rejected']),
+  "services": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "durationMinutes": zod.number().int(),
+  "price": zod.number()
+})),
+  "createdAt": zod.coerce.date()
 })
 
 

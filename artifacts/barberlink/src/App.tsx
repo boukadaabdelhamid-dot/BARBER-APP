@@ -1,14 +1,22 @@
 import { type FormEvent, type ReactNode, useMemo, useRef, useState } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import {
   useCreateBarber,
   useCreateBooking,
   useGetBarber,
+  useGetAdminSession,
   useHealthCheck,
   useListBarbers,
+  useListPendingBarbers,
+  useLoginAdmin,
+  useLogoutAdmin,
+  useModerateBarber,
   getGetBarberQueryKey,
+  getGetAdminSessionQueryKey,
   getListBarbersQueryKey,
+  getListPendingBarbersQueryKey,
   type Barber,
+  type BarberReview,
   type BarberInput,
   type BookingInput,
 } from '@workspace/api-client-react';
@@ -29,6 +37,14 @@ import {
   X,
   AlertCircle,
   RefreshCw,
+  LockKeyhole,
+  LogOut,
+  Phone,
+  UserRoundCheck,
+  UserRoundX,
+  CalendarClock,
+  ChevronDown,
+  Shield,
 } from 'lucide-react';
 import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -636,12 +652,239 @@ function Join() {
   );
 }
 
+function Admin() {
+  const queryClient = useQueryClient();
+  const session = useGetAdminSession({
+    query: { queryKey: getGetAdminSessionQueryKey(), retry: false, staleTime: 0 },
+  });
+  const authenticated = session.data?.authenticated === true;
+  const pending = useListPendingBarbers({
+    query: {
+      queryKey: getListPendingBarbersQueryKey(),
+      enabled: authenticated,
+      retry: false,
+      staleTime: 0,
+    },
+  });
+  const login = useLoginAdmin();
+  const logout = useLogoutAdmin();
+  const moderate = useModerateBarber();
+  const [loginError, setLoginError] = useState('');
+  const [decisionError, setDecisionError] = useState('');
+  const [busyBarber, setBusyBarber] = useState<number | null>(null);
+  const [passwordVisible, setPasswordVisible] = useState(false);
+
+  const submitLogin = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const password = String(form.get('password') || '');
+    setLoginError('');
+    login.mutate({ data: { password } }, {
+      onSuccess: async () => {
+        queryClient.setQueryData(getGetAdminSessionQueryKey(), { authenticated: false });
+        queryClient.removeQueries({ queryKey: getListPendingBarbersQueryKey() });
+      },
+      onError: () => setLoginError('تعذّر تسجيل الدخول. راجع كلمة المرور وحاول مجددًا.'),
+    });
+  };
+
+  const signOut = () => {
+    logout.mutate(undefined, {
+      onSuccess: async () => {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: getGetAdminSessionQueryKey() }),
+          queryClient.invalidateQueries({ queryKey: getListPendingBarbersQueryKey() }),
+        ]);
+      },
+      onError: () => setDecisionError('لم يتم تسجيل الخروج. يرجى المحاولة مرة أخرى.'),
+    });
+  };
+
+  const decide = (barberId: number, status: 'active' | 'rejected') => {
+    setDecisionError('');
+    setBusyBarber(barberId);
+    moderate.mutate({ barberId, data: { status } }, {
+      onSuccess: async () => {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: getListPendingBarbersQueryKey() }),
+          queryClient.invalidateQueries({ queryKey: getListBarbersQueryKey() }),
+        ]);
+        setBusyBarber(null);
+      },
+      onError: () => {
+        setBusyBarber(null);
+        setDecisionError('تعذّر حفظ القرار. بقي الملف في قائمة المراجعة؛ حاول مرة أخرى.');
+      },
+    });
+  };
+
+  return (
+    <div className="admin-shell" dir="rtl">
+      <header className="admin-topbar">
+        <Brand />
+        <div className="admin-topbar-side">
+          <span className="admin-team"><span className="team-dot" /> مساحة الفريق</span>
+          {authenticated && (
+            <button className="admin-logout" type="button" onClick={signOut} disabled={logout.isPending} data-testid="button-admin-logout">
+              <LogOut size={16} /> {logout.isPending ? 'جارٍ الخروج…' : 'تسجيل الخروج'}
+            </button>
+          )}
+        </div>
+      </header>
+
+      <main className="admin-main">
+        {session.isLoading ? (
+          <div className="admin-loading" aria-label="جارٍ التحقق من الجلسة">
+            <div className="admin-loading-head"><span /><span /></div>
+            <div className="admin-skeleton" />
+            <div className="admin-skeleton" />
+          </div>
+        ) : session.isError ? (
+          <section className="admin-login-panel">
+            <div className="admin-login-icon"><Shield aria-hidden="true" /></div>
+            <div className="admin-kicker">BarberLink · مساحة الفريق</div>
+            <h1>تعذّر التحقق من الجلسة</h1>
+            <p>تحقق من اتصال الخدمة ثم أعد المحاولة. لن نعرض ملفات المراجعة قبل تأكيد صلاحية الدخول.</p>
+            <button className="admin-primary-button" type="button" onClick={() => void session.refetch()} data-testid="button-admin-session-retry">
+              <RefreshCw size={17} /> إعادة المحاولة
+            </button>
+          </section>
+        ) : !authenticated ? (
+          <section className="admin-login-panel">
+            <div className="admin-login-icon"><LockKeyhole aria-hidden="true" /></div>
+            <div className="admin-kicker">BarberLink · مساحة الفريق</div>
+            <h1>مراجعة هادئة،<br /><em>بداية موثوقة.</em></h1>
+            <p>ادخل إلى قائمة الحلاقين المستقلين الذين ينتظرون التحقق قبل ظهورهم للعملاء.</p>
+            {loginError && <div className="admin-alert" role="alert"><AlertCircle size={17} />{loginError}</div>}
+            <form className="admin-login-form" onSubmit={submitLogin} data-testid="form-admin-login">
+              <label htmlFor="admin-password">كلمة مرور الفريق</label>
+              <div className="admin-password-wrap">
+                <input id="admin-password" name="password" type={passwordVisible ? 'text' : 'password'} required autoComplete="current-password" maxLength={512} placeholder="أدخل كلمة المرور" data-testid="input-admin-password" />
+                <button type="button" onClick={() => setPasswordVisible((visible) => !visible)} aria-label={passwordVisible ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}>
+                  {passwordVisible ? 'إخفاء' : 'إظهار'}
+                </button>
+              </div>
+              <button className="admin-primary-button" type="submit" disabled={login.isPending} data-testid="button-admin-login">
+                {login.isPending ? 'جارٍ التحقق…' : <>دخول آمن <ArrowLeft size={17} /></>}
+              </button>
+            </form>
+            <div className="admin-login-foot"><Shield size={14} /> دخول خاص بفريق المراجعة</div>
+          </section>
+        ) : (
+          <>
+            <div className="admin-heading">
+              <div>
+                <div className="admin-kicker">لوحة المراجعة <span>·</span> الفريق المحلي</div>
+                <h1>ملفات تنتظر<br className="mobile-break" /> <em>عينك الخبيرة.</em></h1>
+                <p>تحقق من تفاصيل كل محترف، ثم قرر إن كان جاهزًا للظهور في دليل الحلاقين.</p>
+              </div>
+              <div className="admin-count-card">
+                <span className="count-label">قيد المراجعة</span>
+                <strong>{pending.isLoading ? '—' : (pending.data?.length ?? 0).toLocaleString('ar')}</strong>
+                <span className="count-note"><span className="team-dot" /> طلبات جديدة</span>
+              </div>
+            </div>
+            <div className="review-toolbar">
+              <div className="review-toolbar-title"><span className="review-number">01</span><strong>قائمة الملفات</strong><span className="review-divider" /> مراجعة كل ملف على حدة</div>
+              <div className="admin-live"><span /> بيانات مباشرة</div>
+            </div>
+            {decisionError && <div className="admin-alert admin-alert-wide" role="alert"><AlertCircle size={17} />{decisionError}</div>}
+            {pending.isLoading ? (
+              <div className="review-skeletons" aria-label="جارٍ تحميل طلبات المراجعة">
+                {[0, 1].map((item) => <div className="review-skeleton" key={item}><span /><div><i /><i /><i /></div></div>)}
+              </div>
+            ) : pending.isError ? (
+              <div className="admin-state admin-error-state" role="alert">
+                <div className="state-symbol"><AlertCircle /></div>
+                <h2>لم نتمكن من تحميل الملفات</h2>
+                <p>قد تكون الجلسة انتهت أو الاتصال غير مستقر. أعد المحاولة للمتابعة.</p>
+                <button className="admin-secondary-button" type="button" onClick={() => void pending.refetch()} data-testid="button-pending-retry"><RefreshCw size={16} /> إعادة تحميل القائمة</button>
+              </div>
+            ) : (pending.data ?? []).length === 0 ? (
+              <div className="admin-state admin-empty-state" data-testid="status-admin-empty">
+                <div className="empty-orbit"><UserRoundCheck /></div>
+                <div className="admin-kicker">كل شيء في مكانه</div>
+                <h2>لا توجد ملفات معلّقة.</h2>
+                <p>حين يرسل حلاق مستقل ملفه، سيظهر هنا لتراجعه قبل نشره للعملاء.</p>
+                <Link href="/" className="admin-back-link">العودة إلى الاكتشاف <ArrowLeft size={15} /></Link>
+              </div>
+            ) : (
+              <div className="review-list" data-testid="list-pending-barbers">
+                {(pending.data ?? []).map((barber) => (
+                  <ReviewCard
+                    key={barber.id}
+                    barber={barber}
+                    isBusy={busyBarber === barber.id}
+                    onDecision={(status) => decide(barber.id, status)}
+                  />
+                ))}
+              </div>
+            )}
+            <footer className="admin-footer"><span>BarberLink</span><span>نراجع اليوم، لنطمئن غدًا.</span><span>فريق المراجعة <span className="team-dot" /></span></footer>
+          </>
+        )}
+      </main>
+    </div>
+  );
+}
+
+function ReviewCard({ barber, isBusy, onDecision }: { barber: BarberReview; isBusy: boolean; onDecision: (status: 'active' | 'rejected') => void }) {
+  const [expanded, setExpanded] = useState(true);
+  return (
+    <article className={`review-card${isBusy ? ' is-busy' : ''}${expanded ? '' : ' is-collapsed'}`} data-testid={`review-card-${barber.id}`}>
+      <div className="review-card-top">
+        <div className="review-identity">
+          <div className="review-avatar">
+            {barber.imageUrl ? <img src={barber.imageUrl} alt={`صورة ${barber.name}`} /> : <span>{barber.name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join('')}</span>}
+          </div>
+          <div>
+            <div className="review-meta-line"><span className="pending-pill"><span /> ينتظر المراجعة</span><span className="review-id">طلب #{barber.id}</span></div>
+            <h2>{barber.name}</h2>
+            <div className="review-location"><MapPin size={14} /> {barber.city}<span className="location-separator">/</span>{barber.areas.join('، ')}</div>
+          </div>
+        </div>
+        <div className="review-date"><CalendarClock size={15} /><span>وصل في<br /><strong>{dateLabel(barber.createdAt)}</strong></span></div>
+      </div>
+      <div className="review-details">
+        <div className="review-bio"><span className="detail-label">نبذة عن الحلاق</span><p>{barber.bio}</p></div>
+        <div className="review-contact"><span className="detail-label">التواصل</span><a href={`tel:${barber.phone}`}><Phone size={14} /> {barber.phone}</a></div>
+        <div className="review-service-section">
+          <span className="detail-label">الخدمات والأسعار</span>
+          <div className="review-services">
+            {barber.services.map((service) => (
+              <div className="review-service" key={service.id}>
+                <span><strong>{service.name}</strong><small><Clock3 size={12} /> {service.durationMinutes} دقيقة</small></span>
+                <b>{money(service.price, barber.currency)}</b>
+              </div>
+            ))}
+          </div>
+          <div className="review-travel"><span>رسوم التنقل</span><strong>{money(barber.travelFee, barber.currency)}</strong></div>
+        </div>
+      </div>
+      <div className="review-card-bottom">
+        <button className="review-disclosure" type="button" onClick={() => setExpanded((value) => !value)} aria-expanded={expanded}>
+          {expanded ? 'إخفاء التفاصيل' : 'عرض التفاصيل'} <ChevronDown size={15} />
+        </button>
+        <div className="review-actions">
+          <button className="reject-button" type="button" disabled={isBusy} onClick={() => onDecision('rejected')} data-testid={`button-reject-${barber.id}`}>
+            <UserRoundX size={16} /> {isBusy ? 'جارٍ الحفظ…' : 'رفض الملف'}
+          </button>
+          <button className="approve-button" type="button" disabled={isBusy} onClick={() => onDecision('active')} data-testid={`button-approve-${barber.id}`}>
+            <UserRoundCheck size={16} /> {isBusy ? 'جارٍ الحفظ…' : 'اعتماد ونشر'}
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 function Router() {
   return (
     <RoutedErrorBoundary>
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/join" component={Join} />
+        <Route path="/admin" component={Admin} />
         <Route component={NotFound} />
       </Switch>
     </RoutedErrorBoundary>

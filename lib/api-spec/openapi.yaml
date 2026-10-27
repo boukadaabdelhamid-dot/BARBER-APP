@@ -14,6 +14,8 @@ tags:
     description: Public mobile barber discovery and onboarding
   - name: bookings
     description: Booking requests
+  - name: admin
+    description: Protected barber profile review
 paths:
   /healthz:
     get:
@@ -107,6 +109,97 @@ paths:
                 $ref: "#/components/schemas/BookingConfirmation"
         "404":
           description: Barber or service not found
+  /admin/session:
+    get:
+      operationId: getAdminSession
+      tags: [admin]
+      summary: Check the current admin session
+      responses:
+        "200":
+          description: Session status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSession"
+    post:
+      operationId: loginAdmin
+      tags: [admin]
+      summary: Start an admin session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminLoginInput"
+      responses:
+        "200":
+          description: Admin session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSession"
+        "401":
+          description: Invalid password
+        "429":
+          description: Too many login attempts
+        "503":
+          description: Admin authentication is not configured
+    delete:
+      operationId: logoutAdmin
+      tags: [admin]
+      summary: End the current admin session
+      responses:
+        "200":
+          description: Admin session ended
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSession"
+  /admin/barbers:
+    get:
+      operationId: listPendingBarbers
+      tags: [admin]
+      summary: List barber profiles awaiting review
+      responses:
+        "200":
+          description: Pending barber profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BarberReview"
+        "401":
+          description: Admin authentication required
+  /admin/barbers/{barberId}/status:
+    patch:
+      operationId: moderateBarber
+      tags: [admin]
+      summary: Approve or reject a pending barber profile
+      parameters:
+        - name: barberId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BarberDecisionInput"
+      responses:
+        "200":
+          description: Updated barber profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BarberReview"
+        "401":
+          description: Admin authentication required
+        "404":
+          description: Pending profile not found
+        "409":
+          description: Profile was already reviewed
 components:
   schemas:
     HealthStatus:
@@ -141,7 +234,7 @@ components:
         currency: { type: string }
         phone: { type: string }
         imageUrl: { type: ["string", "null"] }
-        status: { type: string, enum: [active, pending] }
+        status: { type: string, enum: [active, pending, rejected] }
         services:
           type: array
           items:
@@ -180,6 +273,44 @@ components:
         id: { type: integer }
         status: { type: string, enum: [pending] }
         message: { type: string }
+    AdminSession:
+      type: object
+      required: [authenticated]
+      properties:
+        authenticated: { type: boolean }
+    AdminLoginInput:
+      type: object
+      required: [password]
+      properties:
+        password: { type: string, minLength: 1, maxLength: 512 }
+    BarberReview:
+      type: object
+      required: [id, name, city, areas, bio, rating, reviewCount, travelFee, currency, services, phone, status, createdAt]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        city: { type: string }
+        areas:
+          type: array
+          items: { type: string }
+        bio: { type: string }
+        rating: { type: number }
+        reviewCount: { type: integer }
+        travelFee: { type: number }
+        currency: { type: string }
+        phone: { type: string }
+        imageUrl: { type: ["string", "null"] }
+        status: { type: string, enum: [active, pending, rejected] }
+        services:
+          type: array
+          items:
+            $ref: "#/components/schemas/BarberService"
+        createdAt: { type: string, format: date-time }
+    BarberDecisionInput:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [active, rejected] }
     BookingInput:
       type: object
       required: [barberId, serviceId, customerName, customerPhone, area, date, time]

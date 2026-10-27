@@ -14,6 +14,8 @@ tags:
     description: Public mobile barber discovery and onboarding
   - name: bookings
     description: Booking requests
+  - name: barberPortal
+    description: Barber booking management
   - name: admin
     description: Protected barber profile review
 paths:
@@ -89,6 +91,97 @@ paths:
                 $ref: "#/components/schemas/Barber"
         "404":
           description: Barber not found
+  /barber/session:
+    get:
+      operationId: getBarberSession
+      tags: [barberPortal]
+      summary: Check the current barber session
+      responses:
+        "200":
+          description: Barber session status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BarberSession"
+    post:
+      operationId: loginBarber
+      tags: [barberPortal]
+      summary: Start a barber session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BarberCredentialsInput"
+      responses:
+        "200":
+          description: Barber session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BarberSession"
+        "401":
+          description: Invalid barber credentials
+        "429":
+          description: Too many login attempts
+        "503":
+          description: Barber authentication is not configured
+    delete:
+      operationId: logoutBarber
+      tags: [barberPortal]
+      summary: End the current barber session
+      responses:
+        "200":
+          description: Barber session ended
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BarberSession"
+  /barber/bookings:
+    get:
+      operationId: listBarberBookings
+      tags: [barberPortal]
+      summary: List bookings for the signed-in barber
+      responses:
+        "200":
+          description: Bookings owned by the current barber
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BarberBooking"
+        "401":
+          description: Barber authentication required
+  /barber/bookings/{bookingId}/status:
+    patch:
+      operationId: decideBarberBooking
+      tags: [barberPortal]
+      summary: Confirm or reject a booking request
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookingDecisionInput"
+      responses:
+        "200":
+          description: Updated booking
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BarberBooking"
+        "401":
+          description: Barber authentication required
+        "404":
+          description: Booking not found
+        "409":
+          description: Booking was already decided
   /bookings:
     post:
       operationId: createBooking
@@ -109,6 +202,29 @@ paths:
                 $ref: "#/components/schemas/BookingConfirmation"
         "404":
           description: Barber or service not found
+  /booking-status:
+    get:
+      operationId: getBookingStatus
+      tags: [bookings]
+      summary: Check a booking with its private tracking token
+      parameters:
+        - name: bookingId
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: token
+          in: query
+          required: true
+          schema: { type: string, minLength: 32, maxLength: 128 }
+      responses:
+        "200":
+          description: Booking status for the customer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingTracking"
+        "404":
+          description: Booking not found
   /admin/session:
     get:
       operationId: getAdminSession
@@ -171,6 +287,27 @@ paths:
                   $ref: "#/components/schemas/BarberReview"
         "401":
           description: Admin authentication required
+  /admin/barbers/{barberId}/access-code:
+    post:
+      operationId: issueBarberAccessCode
+      tags: [admin]
+      summary: Issue a new login code for an active barber
+      parameters:
+        - name: barberId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: One-time login code
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BarberAccessCode"
+        "401":
+          description: Admin authentication required
+        "404":
+          description: Active barber not found
   /admin/barbers/{barberId}/status:
     patch:
       operationId: moderateBarber
@@ -268,11 +405,31 @@ components:
             $ref: "#/components/schemas/BarberServiceInput"
     BarberSubmission:
       type: object
-      required: [id, status, message]
+      required: [id, status, message, accessCode]
       properties:
         id: { type: integer }
         status: { type: string, enum: [pending] }
         message: { type: string }
+        accessCode: { type: string, minLength: 32, maxLength: 128 }
+    BarberCredentialsInput:
+      type: object
+      required: [barberId, accessCode]
+      properties:
+        barberId: { type: integer }
+        accessCode: { type: string, minLength: 32, maxLength: 128 }
+    BarberSession:
+      type: object
+      required: [authenticated]
+      properties:
+        authenticated: { type: boolean }
+        barberId: { type: integer }
+        barberName: { type: string }
+    BarberAccessCode:
+      type: object
+      required: [barberId, accessCode]
+      properties:
+        barberId: { type: integer }
+        accessCode: { type: string, minLength: 32, maxLength: 128 }
     AdminSession:
       type: object
       required: [authenticated]
@@ -325,10 +482,42 @@ components:
         note: { type: ["string", "null"], maxLength: 500 }
     BookingConfirmation:
       type: object
-      required: [id, status, barberName, serviceName, date, time]
+      required: [id, status, barberName, serviceName, date, time, trackingToken]
       properties:
         id: { type: integer }
         status: { type: string, enum: [requested] }
+        barberName: { type: string }
+        serviceName: { type: string }
+        date: { type: string, format: date }
+        time: { type: string }
+        trackingToken: { type: string, minLength: 32, maxLength: 128 }
+    BookingDecisionInput:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [confirmed, rejected] }
+    BarberBooking:
+      type: object
+      required: [id, status, serviceName, servicePrice, currency, customerName, customerPhone, area, date, time, note, createdAt]
+      properties:
+        id: { type: integer }
+        status: { type: string, enum: [requested, confirmed, rejected] }
+        serviceName: { type: string }
+        servicePrice: { type: number }
+        currency: { type: string }
+        customerName: { type: string }
+        customerPhone: { type: string }
+        area: { type: string }
+        date: { type: string, format: date }
+        time: { type: string }
+        note: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+    BookingTracking:
+      type: object
+      required: [id, status, barberName, serviceName, date, time]
+      properties:
+        id: { type: integer }
+        status: { type: string, enum: [requested, confirmed, rejected] }
         barberName: { type: string }
         serviceName: { type: string }
         date: { type: string, format: date }

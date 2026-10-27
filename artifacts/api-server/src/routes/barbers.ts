@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from "node:crypto";
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
@@ -76,10 +77,13 @@ router.post("/barbers", async (req, res): Promise<void> => {
     return;
   }
 
-  const [barber] = await db
+  const accessCode = randomBytes(32).toString("base64url");
+  const accessCodeHash = createHash("sha256").update(accessCode).digest("hex");
+  const [createdBarber] = await db
     .insert(barbersTable)
     .values({
       ...parsed.data,
+      accessCodeHash,
       imageUrl: null,
       status: "pending",
     })
@@ -87,9 +91,10 @@ router.post("/barbers", async (req, res): Promise<void> => {
 
   res.status(201).json(
     CreateBarberResponse.parse({
-      id: barber.id,
+      id: createdBarber.id,
       status: "pending",
       message: "تم استلام طلبك. سنتواصل معك بعد مراجعة الملف.",
+      accessCode,
     }),
   );
 });
@@ -118,6 +123,8 @@ router.post("/bookings", async (req, res): Promise<void> => {
   }
 
   const requestedDate = parsed.data.date.toISOString().slice(0, 10);
+  const trackingToken = randomBytes(32).toString("base64url");
+  const trackingTokenHash = createHash("sha256").update(trackingToken).digest("hex");
   const [booking] = await db
     .insert(bookingsTable)
     .values({
@@ -125,6 +132,7 @@ router.post("/bookings", async (req, res): Promise<void> => {
       serviceId: service.id,
       serviceName: service.name,
       servicePrice: service.price,
+      currency: barber.currency,
       customerName: parsed.data.customerName,
       customerPhone: parsed.data.customerPhone,
       area: parsed.data.area,
@@ -132,6 +140,7 @@ router.post("/bookings", async (req, res): Promise<void> => {
       requestedTime: parsed.data.time,
       note: parsed.data.note ?? null,
       status: "requested",
+      trackingTokenHash,
     })
     .returning();
 
@@ -143,6 +152,7 @@ router.post("/bookings", async (req, res): Promise<void> => {
       serviceName: service.name,
       date: new Date(`${booking.requestedDate}T00:00:00.000Z`),
       time: booking.requestedTime,
+      trackingToken,
     }),
   );
 });

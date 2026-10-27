@@ -11,4 +11,9 @@ export interface BarberSubmission {
   id: number;
   status: BarberSubmissionStatus;
   message: string;
+  /**
+     * @minLength 32
+     * @maxLength 128
+     */
+  accessCode: string;
 }

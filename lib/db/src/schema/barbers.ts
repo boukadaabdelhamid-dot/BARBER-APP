@@ -20,6 +20,7 @@ export const barbersTable = pgTable("barbers", {
   travelFee: real("travel_fee").notNull().default(0),
   currency: text("currency").notNull().default("EUR"),
   phone: text("phone").notNull(),
+  accessCodeHash: text("access_code_hash"),
   imageUrl: text("image_url"),
   status: text("status").notNull().default("pending"),
   services: jsonb("services").$type<BarberService[]>().notNull().default([]),

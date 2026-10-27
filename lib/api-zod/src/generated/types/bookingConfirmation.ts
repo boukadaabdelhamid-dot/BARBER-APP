@@ -14,4 +14,9 @@ export interface BookingConfirmation {
   serviceName: string;
   date: Date;
   time: string;
+  /**
+     * @minLength 32
+     * @maxLength 128
+     */
+  trackingToken: string;
 }

@@ -9,6 +9,7 @@ export const bookingsTable = pgTable("bookings", {
   serviceId: text("service_id").notNull(),
   serviceName: text("service_name").notNull(),
   servicePrice: real("service_price").notNull(),
+  currency: text("currency").notNull().default("EUR"),
   customerName: text("customer_name").notNull(),
   customerPhone: text("customer_phone").notNull(),
   area: text("area").notNull(),
@@ -16,6 +17,7 @@ export const bookingsTable = pgTable("bookings", {
   requestedTime: text("requested_time").notNull(),
   note: text("note"),
   status: text("status").notNull().default("requested"),
+  trackingTokenHash: text("tracking_token_hash").notNull().default(""),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

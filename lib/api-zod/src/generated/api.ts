@@ -103,10 +103,16 @@ export const CreateBarberBody = zod.object({
 })).min(1)
 })
 
+export const createBarberResponseAccessCodeMin = 32;
+export const createBarberResponseAccessCodeMax = 128;
+
+
+
 export const CreateBarberResponse = zod.object({
   "id": zod.number().int(),
   "status": zod.enum(['pending']),
-  "message": zod.string()
+  "message": zod.string(),
+  "accessCode": zod.string().min(createBarberResponseAccessCodeMin).max(createBarberResponseAccessCodeMax)
 })
 
 
@@ -140,6 +146,93 @@ export const GetBarberResponse = zod.object({
 
 
 /**
+ * @summary Check the current barber session
+ */
+export const GetBarberSessionResponse = zod.object({
+  "authenticated": zod.boolean(),
+  "barberId": zod.number().int().optional(),
+  "barberName": zod.string().optional()
+})
+
+
+/**
+ * @summary Start a barber session
+ */
+export const loginBarberBodyAccessCodeMin = 32;
+export const loginBarberBodyAccessCodeMax = 128;
+
+
+
+export const LoginBarberBody = zod.object({
+  "barberId": zod.number().int(),
+  "accessCode": zod.string().min(loginBarberBodyAccessCodeMin).max(loginBarberBodyAccessCodeMax)
+})
+
+export const LoginBarberResponse = zod.object({
+  "authenticated": zod.boolean(),
+  "barberId": zod.number().int().optional(),
+  "barberName": zod.string().optional()
+})
+
+
+/**
+ * @summary End the current barber session
+ */
+export const LogoutBarberResponse = zod.object({
+  "authenticated": zod.boolean(),
+  "barberId": zod.number().int().optional(),
+  "barberName": zod.string().optional()
+})
+
+
+/**
+ * @summary List bookings for the signed-in barber
+ */
+export const ListBarberBookingsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "status": zod.enum(['requested', 'confirmed', 'rejected']),
+  "serviceName": zod.string(),
+  "servicePrice": zod.number(),
+  "currency": zod.string(),
+  "customerName": zod.string(),
+  "customerPhone": zod.string(),
+  "area": zod.string(),
+  "date": zod.coerce.date(),
+  "time": zod.string(),
+  "note": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+})
+export const ListBarberBookingsResponse = zod.array(ListBarberBookingsResponseItem)
+
+
+/**
+ * @summary Confirm or reject a booking request
+ */
+export const DecideBarberBookingParams = zod.object({
+  "bookingId": zod.coerce.number().int()
+})
+
+export const DecideBarberBookingBody = zod.object({
+  "status": zod.enum(['confirmed', 'rejected'])
+})
+
+export const DecideBarberBookingResponse = zod.object({
+  "id": zod.number().int(),
+  "status": zod.enum(['requested', 'confirmed', 'rejected']),
+  "serviceName": zod.string(),
+  "servicePrice": zod.number(),
+  "currency": zod.string(),
+  "customerName": zod.string(),
+  "customerPhone": zod.string(),
+  "area": zod.string(),
+  "date": zod.coerce.date(),
+  "time": zod.string(),
+  "note": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Request an appointment
  */
 export const createBookingBodyServiceIdMax = 40;
@@ -169,9 +262,38 @@ export const CreateBookingBody = zod.object({
   "note": zod.string().max(createBookingBodyNoteMax).nullish()
 })
 
+export const createBookingResponseTrackingTokenMin = 32;
+export const createBookingResponseTrackingTokenMax = 128;
+
+
+
 export const CreateBookingResponse = zod.object({
   "id": zod.number().int(),
   "status": zod.enum(['requested']),
+  "barberName": zod.string(),
+  "serviceName": zod.string(),
+  "date": zod.coerce.date(),
+  "time": zod.string(),
+  "trackingToken": zod.string().min(createBookingResponseTrackingTokenMin).max(createBookingResponseTrackingTokenMax)
+})
+
+
+/**
+ * @summary Check a booking with its private tracking token
+ */
+export const getBookingStatusQueryTokenMin = 32;
+export const getBookingStatusQueryTokenMax = 128;
+
+
+
+export const GetBookingStatusQueryParams = zod.object({
+  "bookingId": zod.coerce.number().int(),
+  "token": zod.coerce.string().min(getBookingStatusQueryTokenMin).max(getBookingStatusQueryTokenMax)
+})
+
+export const GetBookingStatusResponse = zod.object({
+  "id": zod.number().int(),
+  "status": zod.enum(['requested', 'confirmed', 'rejected']),
   "barberName": zod.string(),
   "serviceName": zod.string(),
   "date": zod.coerce.date(),
@@ -236,6 +358,24 @@ export const ListPendingBarbersResponseItem = zod.object({
   "createdAt": zod.coerce.date()
 })
 export const ListPendingBarbersResponse = zod.array(ListPendingBarbersResponseItem)
+
+
+/**
+ * @summary Issue a new login code for an active barber
+ */
+export const IssueBarberAccessCodeParams = zod.object({
+  "barberId": zod.coerce.number().int()
+})
+
+export const issueBarberAccessCodeResponseAccessCodeMin = 32;
+export const issueBarberAccessCodeResponseAccessCodeMax = 128;
+
+
+
+export const IssueBarberAccessCodeResponse = zod.object({
+  "barberId": zod.number().int(),
+  "accessCode": zod.string().min(issueBarberAccessCodeResponseAccessCodeMin).max(issueBarberAccessCodeResponseAccessCodeMax)
+})
 
 
 /**

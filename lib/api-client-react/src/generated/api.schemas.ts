@@ -117,6 +117,35 @@ export interface BarberSubmission {
   id: number;
   status: BarberSubmissionStatus;
   message: string;
+  /**
+     * @minLength 32
+     * @maxLength 128
+     */
+  accessCode: string;
+}
+
+export interface BarberCredentialsInput {
+  barberId: number;
+  /**
+     * @minLength 32
+     * @maxLength 128
+     */
+  accessCode: string;
+}
+
+export interface BarberSession {
+  authenticated: boolean;
+  barberId?: number;
+  barberName?: string;
+}
+
+export interface BarberAccessCode {
+  barberId: number;
+  /**
+     * @minLength 32
+     * @maxLength 128
+     */
+  accessCode: string;
 }
 
 export interface AdminSession {
@@ -216,10 +245,79 @@ export interface BookingConfirmation {
   serviceName: string;
   date: string;
   time: string;
+  /**
+     * @minLength 32
+     * @maxLength 128
+     */
+  trackingToken: string;
+}
+
+export type BookingDecisionInputStatus = typeof BookingDecisionInputStatus[keyof typeof BookingDecisionInputStatus];
+
+
+export const BookingDecisionInputStatus = {
+  confirmed: 'confirmed',
+  rejected: 'rejected',
+} as const;
+
+export interface BookingDecisionInput {
+  status: BookingDecisionInputStatus;
+}
+
+export type BarberBookingStatus = typeof BarberBookingStatus[keyof typeof BarberBookingStatus];
+
+
+export const BarberBookingStatus = {
+  requested: 'requested',
+  confirmed: 'confirmed',
+  rejected: 'rejected',
+} as const;
+
+export interface BarberBooking {
+  id: number;
+  status: BarberBookingStatus;
+  serviceName: string;
+  servicePrice: number;
+  currency: string;
+  customerName: string;
+  customerPhone: string;
+  area: string;
+  date: string;
+  time: string;
+  /** @nullable */
+  note: string | null;
+  createdAt: string;
+}
+
+export type BookingTrackingStatus = typeof BookingTrackingStatus[keyof typeof BookingTrackingStatus];
+
+
+export const BookingTrackingStatus = {
+  requested: 'requested',
+  confirmed: 'confirmed',
+  rejected: 'rejected',
+} as const;
+
+export interface BookingTracking {
+  id: number;
+  status: BookingTrackingStatus;
+  barberName: string;
+  serviceName: string;
+  date: string;
+  time: string;
 }
 
 export type ListBarbersParams = {
 city?: string;
 search?: string;
+};
+
+export type GetBookingStatusParams = {
+bookingId: number;
+/**
+ * @minLength 32
+ * @maxLength 128
+ */
+token: string;
 };
 

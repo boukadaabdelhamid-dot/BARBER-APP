@@ -1,24 +1,36 @@
-import { type FormEvent, type ReactNode, useMemo, useRef, useState } from 'react';
+import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import {
   useCreateBarber,
   useCreateBooking,
+  useDecideBarberBooking,
   useGetBarber,
+  useGetBarberSession,
+  useGetBookingStatus,
   useGetAdminSession,
   useHealthCheck,
   useListBarbers,
+  useListBarberBookings,
   useListPendingBarbers,
   useLoginAdmin,
+  useLoginBarber,
+  useIssueBarberAccessCode,
   useLogoutAdmin,
+  useLogoutBarber,
   useModerateBarber,
   getGetBarberQueryKey,
+  getGetBarberSessionQueryKey,
+  getGetBookingStatusQueryKey,
   getGetAdminSessionQueryKey,
   getListBarbersQueryKey,
+  getListBarberBookingsQueryKey,
   getListPendingBarbersQueryKey,
   type Barber,
   type BarberReview,
   type BarberInput,
   type BookingInput,
+  type BookingTracking,
+  type BarberBooking,
 } from '@workspace/api-client-react';
 import {
   ArrowLeft,
@@ -45,6 +57,7 @@ import {
   CalendarClock,
   ChevronDown,
   Shield,
+  Clipboard,
 } from 'lucide-react';
 import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -66,9 +79,10 @@ function money(amount: number, currency: string) {
   }
 }
 
-function dateLabel(value: string) {
+function dateLabel(value: string | Date) {
   if (!value) return '';
-  const date = new Date(`${value.slice(0, 10)}T12:00:00`);
+  const dateValue = value instanceof Date ? value.toISOString().slice(0, 10) : value.slice(0, 10);
+  const date = new Date(`${dateValue}T12:00:00`);
   return new Intl.DateTimeFormat('ar', { dateStyle: 'long' }).format(date);
 }
 
@@ -87,6 +101,8 @@ function SiteHeader() {
       <Brand />
       <nav className="nav-links" aria-label="التنقل الرئيسي">
         <Link href="/" data-testid="link-discover">اكتشف الحلاقين</Link>
+        <Link href="/my-bookings" data-testid="link-customer-bookings">طلباتي</Link>
+        <Link href="/barber" data-testid="link-barber-portal">دخول الحلاق</Link>
         <Link href="/join" className="nav-join" data-testid="link-join">انضم كحلاق</Link>
       </nav>
     </header>
@@ -342,7 +358,7 @@ function BarberModal({
     status: string;
     barberName: string;
     serviceName: string;
-    date: string;
+    date: string | Date;
     time: string;
   } | null>(null);
   const booking = useCreateBooking();
@@ -354,6 +370,11 @@ function BarberModal({
   const whatsappMessage = confirmation
     ? `مرحبًا ${confirmation.barberName}، أرسلت طلب الموعد رقم ${confirmation.id}.\nالخدمة: ${confirmation.serviceName}\nالتاريخ: ${dateLabel(confirmation.date)} الساعة ${confirmation.time}\nالاسم: ${contactDetails?.name ?? ''}\nهاتف التواصل: ${contactDetails?.phone ?? ''}\nالمنطقة: ${contactDetails?.area ?? ''}\nأرجو تأكيد الموعد.`
     : '';
+  const saveTrackingReference = (bookingId: number, token: string) => {
+    const stored = readCustomerBookings();
+    const updated = [{ id: bookingId, token }, ...stored.filter((item) => item.id !== bookingId)];
+    window.localStorage.setItem('barberlink_customer_bookings', JSON.stringify(updated));
+  };
 
   const submitBooking = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -376,7 +397,10 @@ function BarberModal({
     });
     setFormError('');
     booking.mutate({ data: payload }, {
-      onSuccess: (result) => setConfirmation(result),
+      onSuccess: (result) => {
+        saveTrackingReference(result.id, result.trackingToken);
+        setConfirmation(result);
+      },
       onError: () => setFormError('تعذّر إرسال طلبك. يرجى التحقق من البيانات والمحاولة مرة أخرى.'),
     });
   };
@@ -394,13 +418,15 @@ function BarberModal({
             <div className="success-mark"><Check aria-hidden="true" /></div>
             <div className="eyebrow">وصل طلبك</div>
             <h2>تم إرسال طلب الموعد</h2>
-            <p>حُفظ طلبك. أرسل تفاصيله للحلاق عبر واتساب حتى يتمكن من تأكيد الموعد معك.</p>
+            <p>حُفظ طلبك. ستظهر حالة التأكيد في صفحة «طلباتي» بعد أن يراجع الحلاق الطلب.</p>
             <div className="confirmation-details">
               <div>الحلاق: <strong>{confirmation.barberName}</strong></div>
               <div>الخدمة: <strong>{confirmation.serviceName}</strong></div>
               <div>التاريخ والوقت: <strong>{dateLabel(confirmation.date)}، {confirmation.time}</strong></div>
               <div>رقم الطلب: <strong>#{confirmation.id}</strong></div>
+              <div>الحالة: <strong>قيد انتظار رد الحلاق</strong></div>
             </div>
+            <Link href="/my-bookings" className="submit-button" onClick={onClose} data-testid="link-track-booking">متابعة حالة الطلب</Link>
             {whatsappPhone && (
               <a
                 className="submit-button"
@@ -505,7 +531,7 @@ function Join() {
   const [services, setServices] = useState<ServiceDraft[]>([{ name: '', durationMinutes: '30', price: '' }]);
   const serviceCounter = useRef(1);
   const [formError, setFormError] = useState('');
-  const [success, setSuccess] = useState<{ id: number; message: string } | null>(null);
+  const [success, setSuccess] = useState<{ id: number; message: string; accessCode: string } | null>(null);
 
   const updateService = (index: number, field: keyof ServiceDraft, value: string) => {
     setServices((current) => current.map((service, currentIndex) => currentIndex === index ? { ...service, [field]: value } : service));
@@ -537,7 +563,7 @@ function Join() {
     };
     setFormError('');
     createBarber.mutate({ data: payload }, {
-      onSuccess: (result) => setSuccess({ id: result.id, message: result.message }),
+      onSuccess: (result) => setSuccess({ id: result.id, message: result.message, accessCode: result.accessCode }),
       onError: () => setFormError('لم نتمكن من إرسال ملفك. راجع الحقول وحاول مرة أخرى.'),
     });
   };
@@ -558,6 +584,26 @@ function Join() {
             <h2>خطوتك التالية وصلت إلينا</h2>
             <p>{success.message || 'شكرًا لانضمامك. سيراجع فريقنا معلوماتك قبل إظهار ملفك للعملاء.'}</p>
             <div className="confirmation-details">رقم الطلب: <strong>#{success.id}</strong><br />الحالة: <strong>قيد المراجعة</strong></div>
+            <div className="access-code-panel" dir="rtl">
+              <strong>رمز دخولك إلى لوحة الحلاق</strong>
+              <code>{success.accessCode}</code>
+              <p>احتفظ بهذا الرمز؛ لن نعرضه مرة أخرى. تحتاج إليه مع رقم الطلب لتسجيل الدخول ومتابعة الحجوزات.</p>
+              <button
+                type="button"
+                className="admin-secondary-button"
+                onClick={async () => {
+                  const value = `${success.id}:${success.accessCode}`;
+                  try {
+                    await navigator.clipboard.writeText(value);
+                  } catch {
+                    window.prompt('انسخ رقم الحلاق ورمز الدخول', value);
+                  }
+                }}
+              >
+                <Clipboard size={15} /> نسخ رقم الحلاق والرمز
+              </button>
+            </div>
+            <Link href="/barber" className="submit-button" data-testid="link-barber-dashboard">فتح لوحة الحلاق</Link>
             <Link href="/" className="submit-button" data-testid="link-join-home">العودة إلى اكتشاف الحلاقين</Link>
           </section>
         ) : (
@@ -666,13 +712,23 @@ function Admin() {
       staleTime: 0,
     },
   });
+  const activeBarbers = useListBarbers({}, {
+    query: {
+      queryKey: getListBarbersQueryKey({}),
+      enabled: authenticated,
+      retry: false,
+    },
+  });
   const login = useLoginAdmin();
   const logout = useLogoutAdmin();
   const moderate = useModerateBarber();
+  const issueAccessCode = useIssueBarberAccessCode();
   const [loginError, setLoginError] = useState('');
   const [decisionError, setDecisionError] = useState('');
   const [busyBarber, setBusyBarber] = useState<number | null>(null);
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [issuedAccessCode, setIssuedAccessCode] = useState<{ barberId: number; accessCode: string } | null>(null);
+  const [accessCodeError, setAccessCodeError] = useState('');
 
   const submitLogin = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -681,8 +737,11 @@ function Admin() {
     setLoginError('');
     login.mutate({ data: { password } }, {
       onSuccess: async () => {
-        queryClient.setQueryData(getGetAdminSessionQueryKey(), { authenticated: false });
-        queryClient.removeQueries({ queryKey: getListPendingBarbersQueryKey() });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: getGetAdminSessionQueryKey() }),
+          queryClient.removeQueries({ queryKey: getListPendingBarbersQueryKey() }),
+          queryClient.removeQueries({ queryKey: getListBarbersQueryKey() }),
+        ]);
       },
       onError: () => setLoginError('تعذّر تسجيل الدخول. راجع كلمة المرور وحاول مجددًا.'),
     });
@@ -693,7 +752,8 @@ function Admin() {
       onSuccess: async () => {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: getGetAdminSessionQueryKey() }),
-          queryClient.invalidateQueries({ queryKey: getListPendingBarbersQueryKey() }),
+          queryClient.removeQueries({ queryKey: getListPendingBarbersQueryKey() }),
+          queryClient.removeQueries({ queryKey: getListBarbersQueryKey() }),
         ]);
       },
       onError: () => setDecisionError('لم يتم تسجيل الخروج. يرجى المحاولة مرة أخرى.'),
@@ -715,6 +775,15 @@ function Admin() {
         setBusyBarber(null);
         setDecisionError('تعذّر حفظ القرار. بقي الملف في قائمة المراجعة؛ حاول مرة أخرى.');
       },
+    });
+  };
+
+  const issueCode = (barberId: number) => {
+    setAccessCodeError('');
+    setIssuedAccessCode(null);
+    issueAccessCode.mutate({ barberId }, {
+      onSuccess: (result) => setIssuedAccessCode(result),
+      onError: () => setAccessCodeError('تعذّر إصدار الرمز. تأكد من أن الملف نشط ثم حاول مجددًا.'),
     });
   };
 
@@ -820,6 +889,43 @@ function Admin() {
                 ))}
               </div>
             )}
+            <section className="active-barber-access" aria-labelledby="active-barber-heading">
+              <div className="review-toolbar">
+                <div className="review-toolbar-title"><span className="review-number">02</span><strong id="active-barber-heading">رموز دخول الحلاقين الحاليين</strong></div>
+                <div className="admin-live"><span /> للملفات النشطة</div>
+              </div>
+              <p>أصدر رمزًا للحلاقين المسجلين قبل تفعيل لوحة الطلبات، ثم أرسله لهم يدويًا. إصدار رمز جديد يعطّل الرمز السابق.</p>
+              {accessCodeError && <div className="admin-alert admin-alert-wide" role="alert"><AlertCircle size={17} />{accessCodeError}</div>}
+              {issuedAccessCode && (
+                <div className="issued-access-code" role="status" data-testid="status-issued-access-code">
+                  <strong>رمز الدخول للحلاق #{issuedAccessCode.barberId}</strong>
+                  <code>{issuedAccessCode.accessCode}</code>
+                  <span>انسخه وأرسله للحلاق الآن؛ لن يظهر مرة أخرى.</span>
+                </div>
+              )}
+              {activeBarbers.isLoading ? (
+                <div className="admin-skeleton" />
+              ) : activeBarbers.isError ? (
+                <div className="admin-alert" role="alert"><AlertCircle size={17} />تعذّر تحميل الحلاقين الحاليين.</div>
+              ) : (
+                <div className="active-barber-list">
+                  {(activeBarbers.data ?? []).filter((barber) => barber.status === 'active').map((barber) => (
+                    <div className="active-barber-row" key={barber.id}>
+                      <span><strong>{barber.name}</strong><small>حلاق #{barber.id}</small></span>
+                      <button
+                        className="admin-secondary-button"
+                        type="button"
+                        disabled={issueAccessCode.isPending}
+                        onClick={() => issueCode(barber.id)}
+                        data-testid={`button-issue-access-code-${barber.id}`}
+                      >
+                        {issueAccessCode.isPending ? 'جارٍ الإصدار…' : 'إصدار رمز الدخول'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
             <footer className="admin-footer"><span>BarberLink</span><span>نراجع اليوم، لنطمئن غدًا.</span><span>فريق المراجعة <span className="team-dot" /></span></footer>
           </>
         )}
@@ -878,6 +984,284 @@ function ReviewCard({ barber, isBusy, onDecision }: { barber: BarberReview; isBu
   );
 }
 
+type BookingReference = { id: number; token: string };
+
+function readCustomerBookings(): BookingReference[] {
+  try {
+    const value: unknown = JSON.parse(window.localStorage.getItem('barberlink_customer_bookings') || '[]');
+    if (!Array.isArray(value)) return [];
+    return value.filter((item): item is BookingReference =>
+      item !== null &&
+      typeof item === 'object' &&
+      Number.isInteger((item as BookingReference).id) &&
+      typeof (item as BookingReference).token === 'string',
+    );
+  } catch {
+    return [];
+  }
+}
+
+function bookingStatusLabel(status: string) {
+  if (status === 'confirmed') return 'تم تأكيد الموعد';
+  if (status === 'rejected') return 'تعذّر قبول الموعد';
+  return 'بانتظار رد الحلاق';
+}
+
+function CustomerBookings() {
+  const [references, setReferences] = useState<BookingReference[]>([]);
+  useEffect(() => setReferences(readCustomerBookings()), []);
+
+  return (
+    <div className="site-shell" dir="rtl">
+      <SiteHeader />
+      <main className="page-wrap">
+        <div className="page-heading">
+          <div className="section-label">حجوزاتك</div>
+          <h1>تابع حالة<br />طلبات مواعيدك.</h1>
+          <p>تتحدث الحالات تلقائيًا عند رد الحلاق. هذه القائمة محفوظة على هذا الجهاز.</p>
+        </div>
+        {references.length === 0 ? (
+          <div className="tracking-empty" data-testid="status-no-customer-bookings">
+            <CalendarDays aria-hidden="true" />
+            <h2>لا توجد طلبات محفوظة هنا</h2>
+            <p>بعد إرسال طلب موعد من هذا الجهاز، ستتمكن من متابعة رده في هذه الصفحة.</p>
+            <Link href="/" className="submit-button">اكتشف الحلاقين</Link>
+          </div>
+        ) : (
+          <div className="tracking-list" data-testid="list-customer-bookings">
+            {references.map((reference) => <CustomerBookingCard key={reference.id} reference={reference} />)}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
+function CustomerBookingCard({ reference }: { reference: BookingReference }) {
+  const params = { bookingId: reference.id, token: reference.token };
+  const query = useGetBookingStatus(params, {
+    query: {
+      queryKey: getGetBookingStatusQueryKey(params),
+      refetchInterval: 10000,
+      retry: false,
+    },
+  });
+  const booking = query.data as BookingTracking | undefined;
+  return (
+    <article className="tracking-card" data-testid={`tracking-card-${reference.id}`}>
+      <div className={`tracking-status ${booking?.status ?? 'requested'}`}>
+        {query.isLoading ? 'جارٍ تحميل الحالة…' : query.isError ? 'تعذّر تحميل الحالة' : bookingStatusLabel(booking?.status ?? 'requested')}
+      </div>
+      {booking ? (
+        <div className="tracking-details">
+          <strong>{booking.barberName}</strong>
+          <span>{booking.serviceName}</span>
+          <span>{dateLabel(booking.date)} · {booking.time}</span>
+          <small>رقم الطلب #{booking.id}</small>
+        </div>
+      ) : (
+        <div className="tracking-details">
+          <strong>طلب موعد #{reference.id}</strong>
+          <span>{query.isError ? 'تحقق من اتصالك ثم أعد تحميل الصفحة.' : 'نحدّث بيانات الطلب.'}</span>
+        </div>
+      )}
+      {query.isError && <button className="admin-secondary-button" type="button" onClick={() => void query.refetch()}><RefreshCw size={15} /> إعادة المحاولة</button>}
+    </article>
+  );
+}
+
+function BarberPortal() {
+  const queryClient = useQueryClient();
+  const session = useGetBarberSession({
+    query: { queryKey: getGetBarberSessionQueryKey(), retry: false, staleTime: 0 },
+  });
+  const authenticated = session.data?.authenticated === true;
+  const bookings = useListBarberBookings({
+    query: {
+      queryKey: getListBarberBookingsQueryKey(),
+      enabled: authenticated,
+      retry: false,
+      refetchInterval: 15000,
+    },
+  });
+  const login = useLoginBarber();
+  const logout = useLogoutBarber();
+  const decideBooking = useDecideBarberBooking();
+  const [loginError, setLoginError] = useState('');
+  const [decisionError, setDecisionError] = useState('');
+  const [busyBooking, setBusyBooking] = useState<number | null>(null);
+
+  const submitLogin = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    setLoginError('');
+    login.mutate({
+      data: {
+        barberId: Number(form.get('barberId')),
+        accessCode: String(form.get('accessCode') || '').trim(),
+      },
+    }, {
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({ queryKey: getGetBarberSessionQueryKey() });
+        await queryClient.invalidateQueries({ queryKey: getListBarberBookingsQueryKey() });
+      },
+      onError: () => setLoginError('رقم الحلاق أو رمز الدخول غير صحيح.'),
+    });
+  };
+
+  const signOut = () => {
+    logout.mutate(undefined, {
+      onSuccess: async () => {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: getGetBarberSessionQueryKey() }),
+          queryClient.removeQueries({ queryKey: getListBarberBookingsQueryKey() }),
+        ]);
+      },
+    });
+  };
+
+  const decide = (bookingId: number, status: 'confirmed' | 'rejected') => {
+    setDecisionError('');
+    setBusyBooking(bookingId);
+    decideBooking.mutate({ bookingId, data: { status } }, {
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({ queryKey: getListBarberBookingsQueryKey() });
+        setBusyBooking(null);
+      },
+      onError: () => {
+        setBusyBooking(null);
+        setDecisionError('تعذّر حفظ القرار. أعد تحميل القائمة وحاول مجددًا.');
+      },
+    });
+  };
+
+  return (
+    <div className="admin-shell" dir="rtl">
+      <header className="admin-topbar">
+        <Brand />
+        <div className="admin-topbar-side">
+          <Link className="admin-back-link" href="/">اكتشف الحلاقين</Link>
+          {authenticated && (
+            <button className="admin-logout" type="button" onClick={signOut} disabled={logout.isPending} data-testid="button-barber-logout">
+              <LogOut size={16} /> تسجيل الخروج
+            </button>
+          )}
+        </div>
+      </header>
+      <main className="admin-main">
+        {session.isLoading ? (
+          <div className="admin-loading" aria-label="جارٍ التحقق من الجلسة"><div className="admin-skeleton" /></div>
+        ) : !authenticated ? (
+          <section className="admin-login-panel">
+            <div className="admin-login-icon"><Scissors aria-hidden="true" /></div>
+            <div className="admin-kicker">BarberLink · مساحة الحلاق</div>
+            <h1>طلباتك،<br /><em>في مكان واحد.</em></h1>
+            <p>استخدم رقم الحلاق ورمز الدخول اللذين ظهرا بعد إرسال ملفك.</p>
+            {loginError && <div className="admin-alert" role="alert"><AlertCircle size={17} />{loginError}</div>}
+            <form className="admin-login-form" onSubmit={submitLogin} data-testid="form-barber-login">
+              <label htmlFor="barber-account-id">رقم الحلاق</label>
+              <input id="barber-account-id" name="barberId" type="number" min="1" autoComplete="username" required data-testid="input-barber-id" />
+              <label htmlFor="barber-access-code">رمز الدخول</label>
+              <input id="barber-access-code" name="accessCode" type="password" autoComplete="current-password" minLength={32} maxLength={128} required data-testid="input-barber-access-code" />
+              <button className="admin-primary-button" type="submit" disabled={login.isPending} data-testid="button-barber-login">
+                {login.isPending ? 'جارٍ التحقق…' : <>دخول إلى الطلبات <ArrowLeft size={17} /></>}
+              </button>
+            </form>
+            <div className="admin-login-foot"><Shield size={14} /> لا يمكن للحلاق الاطلاع إلا على طلباته</div>
+          </section>
+        ) : (
+          <>
+            <div className="admin-heading">
+              <div>
+                <div className="admin-kicker">مساحة الحلاق <span>·</span> {session.data?.barberName}</div>
+                <h1>طلبات مواعيدك<br /><em>تنتظر قرارك.</em></h1>
+                <p>راجع تفاصيل كل طلب، ثم أكّد الموعد أو ارفضه. سيظهر قرارك للعميل.</p>
+              </div>
+              <div className="admin-count-card">
+                <span className="count-label">بانتظار ردك</span>
+                <strong>{(bookings.data ?? []).filter((booking) => booking.status === 'requested').length.toLocaleString('ar')}</strong>
+                <span className="count-note"><span className="team-dot" /> طلبات واردة</span>
+              </div>
+            </div>
+            {decisionError && <div className="admin-alert admin-alert-wide" role="alert"><AlertCircle size={17} />{decisionError}</div>}
+            {bookings.isLoading ? (
+              <div className="review-skeletons" aria-label="جارٍ تحميل الطلبات"><div className="review-skeleton" /><div className="review-skeleton" /></div>
+            ) : bookings.isError ? (
+              <div className="admin-state admin-error-state" role="alert">
+                <div className="state-symbol"><AlertCircle /></div>
+                <h2>لم نتمكن من تحميل طلباتك</h2>
+                <p>قد تكون جلستك انتهت. سجّل الدخول مجددًا أو أعد تحميل القائمة.</p>
+                <button className="admin-secondary-button" type="button" onClick={() => void bookings.refetch()}><RefreshCw size={16} /> إعادة المحاولة</button>
+              </div>
+            ) : (bookings.data ?? []).length === 0 ? (
+              <div className="admin-state admin-empty-state" data-testid="status-barber-bookings-empty">
+                <div className="empty-orbit"><CalendarDays /></div>
+                <h2>لا توجد طلبات بعد</h2>
+                <p>ستظهر هنا طلبات العملاء المرسلة إلى ملفك، ولن تظهر طلبات الحلاقين الآخرين.</p>
+              </div>
+            ) : (
+              <div className="review-list" data-testid="list-barber-bookings">
+                {(bookings.data ?? []).map((booking) => (
+                  <BarberBookingCard
+                    key={booking.id}
+                    booking={booking}
+                    isBusy={busyBooking === booking.id}
+                    onDecision={(status) => decide(booking.id, status)}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </main>
+    </div>
+  );
+}
+
+function BarberBookingCard({ booking, isBusy, onDecision }: {
+  booking: BarberBooking;
+  isBusy: boolean;
+  onDecision: (status: 'confirmed' | 'rejected') => void;
+}) {
+  return (
+    <article className={`review-card barber-booking-card${isBusy ? ' is-busy' : ''}`} data-testid={`barber-booking-${booking.id}`}>
+      <div className="review-card-top">
+        <div className="review-identity">
+          <div className="review-avatar"><CalendarDays /></div>
+          <div>
+            <div className="review-meta-line">
+              <span className={`pending-pill booking-pill-${booking.status}`}><span />{bookingStatusLabel(booking.status)}</span>
+              <span className="review-id">طلب #{booking.id}</span>
+            </div>
+            <h2>{booking.customerName}</h2>
+            <div className="review-location"><CalendarClock size={14} /> {dateLabel(booking.date)} · {booking.time}</div>
+          </div>
+        </div>
+        <div className="review-date"><strong>{money(booking.servicePrice, booking.currency)}</strong></div>
+      </div>
+      <div className="booking-customer-details">
+        <div><span className="detail-label">الخدمة</span><strong>{booking.serviceName}</strong></div>
+        <div><span className="detail-label">رقم العميل</span><a href={`tel:${booking.customerPhone}`} dir="ltr"><Phone size={14} /> {booking.customerPhone}</a></div>
+        <div><span className="detail-label">المنطقة</span><strong>{booking.area}</strong></div>
+        {booking.note && <div className="booking-note"><span className="detail-label">ملاحظة العميل</span><p>{booking.note}</p></div>}
+      </div>
+      {booking.status === 'requested' && (
+        <div className="review-card-bottom booking-decision-row">
+          <span>اختر قرارك ليظهر للعميل</span>
+          <div className="review-actions">
+            <button className="reject-button" type="button" disabled={isBusy} onClick={() => onDecision('rejected')} data-testid={`button-reject-booking-${booking.id}`}>
+              <UserRoundX size={16} /> رفض الطلب
+            </button>
+            <button className="approve-button" type="button" disabled={isBusy} onClick={() => onDecision('confirmed')} data-testid={`button-confirm-booking-${booking.id}`}>
+              <UserRoundCheck size={16} /> تأكيد الموعد
+            </button>
+          </div>
+        </div>
+      )}
+    </article>
+  );
+}
+
 function Router() {
   return (
     <RoutedErrorBoundary>
@@ -885,6 +1269,8 @@ function Router() {
         <Route path="/" component={Home} />
         <Route path="/join" component={Join} />
         <Route path="/admin" component={Admin} />
+        <Route path="/barber" component={BarberPortal} />
+        <Route path="/my-bookings" component={CustomerBookings} />
         <Route component={NotFound} />
       </Switch>
     </RoutedErrorBoundary>

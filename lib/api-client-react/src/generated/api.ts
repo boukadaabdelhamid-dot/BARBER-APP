@@ -28,12 +28,19 @@ import type {
   AdminLoginInput,
   AdminSession,
   Barber,
+  BarberAccessCode,
+  BarberBooking,
+  BarberCredentialsInput,
   BarberDecisionInput,
   BarberInput,
   BarberReview,
+  BarberSession,
   BarberSubmission,
   BookingConfirmation,
+  BookingDecisionInput,
   BookingInput,
+  BookingTracking,
+  GetBookingStatusParams,
   HealthStatus,
   ListBarbersParams
 } from './api.schemas';
@@ -464,6 +471,459 @@ export function useGetBarber<TData = Awaited<ReturnType<typeof getBarber>>, TErr
 
 
 
+export const getGetBarberSessionUrl = () => {
+
+
+
+
+  return `/api/barber/session`
+}
+
+/**
+ * @summary Check the current barber session
+ */
+export const getBarberSession = async ( options?: Parameters<typeof customFetch>[1]): Promise<BarberSession> => {
+
+  return customFetch<BarberSession>(getGetBarberSessionUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBarberSessionQueryKey = () => {
+    return [
+    `/api/barber/session`
+    ] as const;
+    }
+
+
+export const getGetBarberSessionQueryOptions = <TData = Awaited<ReturnType<typeof getBarberSession>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBarberSession>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBarberSessionQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBarberSession>>> = ({ signal }) => getBarberSession({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBarberSession>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetBarberSessionQueryResult = NonNullable<Awaited<ReturnType<typeof getBarberSession>>>
+export type GetBarberSessionQueryError = ErrorType<unknown>
+
+
+export function useGetBarberSession<TData = Awaited<ReturnType<typeof getBarberSession>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBarberSession>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getBarberSession>>,
+          TError,
+          Awaited<ReturnType<typeof getBarberSession>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetBarberSession<TData = Awaited<ReturnType<typeof getBarberSession>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBarberSession>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getBarberSession>>,
+          TError,
+          Awaited<ReturnType<typeof getBarberSession>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetBarberSession<TData = Awaited<ReturnType<typeof getBarberSession>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBarberSession>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Check the current barber session
+ */
+
+export function useGetBarberSession<TData = Awaited<ReturnType<typeof getBarberSession>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBarberSession>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetBarberSessionQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getLoginBarberUrl = () => {
+
+
+
+
+  return `/api/barber/session`
+}
+
+/**
+ * @summary Start a barber session
+ */
+export const loginBarber = async (barberCredentialsInput: BarberCredentialsInput, options?: Parameters<typeof customFetch>[1]): Promise<BarberSession> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<BarberSession>(getLoginBarberUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(barberCredentialsInput)
+  }
+);}
+
+
+
+
+
+export const getLoginBarberMutationKey = () => ['loginBarber'] as const;
+
+export const getLoginBarberMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loginBarber>>, TError,LoginBarberMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof loginBarber>>, TError,LoginBarberMutationVariables, TContext> => {
+
+const mutationKey = getLoginBarberMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof loginBarber>>, LoginBarberMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  loginBarber(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LoginBarberMutationResult = NonNullable<Awaited<ReturnType<typeof loginBarber>>>
+    export type LoginBarberMutationBody = BodyType<BarberCredentialsInput>
+    export type LoginBarberMutationError = ErrorType<void>
+    export type LoginBarberMutationVariables = {data: BodyType<BarberCredentialsInput>}
+
+    /**
+ * @summary Start a barber session
+ */
+export const useLoginBarber = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loginBarber>>, TError,LoginBarberMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof loginBarber>>,
+        TError,
+        LoginBarberMutationVariables,
+        TContext
+      > => {
+      return useMutation(getLoginBarberMutationOptions(options), queryClient);
+    }
+
+export const getLogoutBarberUrl = () => {
+
+
+
+
+  return `/api/barber/session`
+}
+
+/**
+ * @summary End the current barber session
+ */
+export const logoutBarber = async ( options?: Parameters<typeof customFetch>[1]): Promise<BarberSession> => {
+
+  return customFetch<BarberSession>(getLogoutBarberUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getLogoutBarberMutationKey = () => ['logoutBarber'] as const;
+
+export const getLogoutBarberMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof logoutBarber>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof logoutBarber>>, TError,void, TContext> => {
+
+const mutationKey = getLogoutBarberMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof logoutBarber>>, void> = () => {
+
+
+          return  logoutBarber(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LogoutBarberMutationResult = NonNullable<Awaited<ReturnType<typeof logoutBarber>>>
+
+    export type LogoutBarberMutationError = ErrorType<unknown>
+
+
+    /**
+ * @summary End the current barber session
+ */
+export const useLogoutBarber = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof logoutBarber>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof logoutBarber>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getLogoutBarberMutationOptions(options), queryClient);
+    }
+
+export const getListBarberBookingsUrl = () => {
+
+
+
+
+  return `/api/barber/bookings`
+}
+
+/**
+ * @summary List bookings for the signed-in barber
+ */
+export const listBarberBookings = async ( options?: Parameters<typeof customFetch>[1]): Promise<BarberBooking[]> => {
+
+  return customFetch<BarberBooking[]>(getListBarberBookingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListBarberBookingsQueryKey = () => {
+    return [
+    `/api/barber/bookings`
+    ] as const;
+    }
+
+
+export const getListBarberBookingsQueryOptions = <TData = Awaited<ReturnType<typeof listBarberBookings>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listBarberBookings>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListBarberBookingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listBarberBookings>>> = ({ signal }) => listBarberBookings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listBarberBookings>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListBarberBookingsQueryResult = NonNullable<Awaited<ReturnType<typeof listBarberBookings>>>
+export type ListBarberBookingsQueryError = ErrorType<void>
+
+
+export function useListBarberBookings<TData = Awaited<ReturnType<typeof listBarberBookings>>, TError = ErrorType<void>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listBarberBookings>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listBarberBookings>>,
+          TError,
+          Awaited<ReturnType<typeof listBarberBookings>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListBarberBookings<TData = Awaited<ReturnType<typeof listBarberBookings>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listBarberBookings>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listBarberBookings>>,
+          TError,
+          Awaited<ReturnType<typeof listBarberBookings>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListBarberBookings<TData = Awaited<ReturnType<typeof listBarberBookings>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listBarberBookings>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List bookings for the signed-in barber
+ */
+
+export function useListBarberBookings<TData = Awaited<ReturnType<typeof listBarberBookings>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listBarberBookings>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListBarberBookingsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDecideBarberBookingUrl = (bookingId: number,) => {
+
+
+
+
+  return `/api/barber/bookings/${bookingId}/status`
+}
+
+/**
+ * @summary Confirm or reject a booking request
+ */
+export const decideBarberBooking = async (bookingId: number,
+    bookingDecisionInput: BookingDecisionInput, options?: Parameters<typeof customFetch>[1]): Promise<BarberBooking> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<BarberBooking>(getDecideBarberBookingUrl(bookingId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(bookingDecisionInput)
+  }
+);}
+
+
+
+
+
+export const getDecideBarberBookingMutationKey = () => ['decideBarberBooking'] as const;
+
+export const getDecideBarberBookingMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideBarberBooking>>, TError,DecideBarberBookingMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof decideBarberBooking>>, TError,DecideBarberBookingMutationVariables, TContext> => {
+
+const mutationKey = getDecideBarberBookingMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof decideBarberBooking>>, DecideBarberBookingMutationVariables> = (props) => {
+          const {bookingId,data} = props ?? {};
+
+          return  decideBarberBooking(bookingId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DecideBarberBookingMutationResult = NonNullable<Awaited<ReturnType<typeof decideBarberBooking>>>
+    export type DecideBarberBookingMutationBody = BodyType<BookingDecisionInput>
+    export type DecideBarberBookingMutationError = ErrorType<void>
+    export type DecideBarberBookingMutationVariables = {bookingId: number;data: BodyType<BookingDecisionInput>}
+
+    /**
+ * @summary Confirm or reject a booking request
+ */
+export const useDecideBarberBooking = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideBarberBooking>>, TError,DecideBarberBookingMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof decideBarberBooking>>,
+        TError,
+        DecideBarberBookingMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDecideBarberBookingMutationOptions(options), queryClient);
+    }
+
 export const getCreateBookingUrl = () => {
 
 
@@ -551,6 +1011,114 @@ export const useCreateBooking = <TError = ErrorType<void>,
       > => {
       return useMutation(getCreateBookingMutationOptions(options), queryClient);
     }
+
+export const getGetBookingStatusUrl = (params: GetBookingStatusParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/booking-status?${stringifiedParams}` : `/api/booking-status`
+}
+
+/**
+ * @summary Check a booking with its private tracking token
+ */
+export const getBookingStatus = async (params: GetBookingStatusParams, options?: Parameters<typeof customFetch>[1]): Promise<BookingTracking> => {
+
+  return customFetch<BookingTracking>(getGetBookingStatusUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBookingStatusQueryKey = (params?: GetBookingStatusParams,) => {
+    return [
+    `/api/booking-status`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetBookingStatusQueryOptions = <TData = Awaited<ReturnType<typeof getBookingStatus>>, TError = ErrorType<void>>(params: GetBookingStatusParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBookingStatus>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBookingStatusQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBookingStatus>>> = ({ signal }) => getBookingStatus(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBookingStatus>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetBookingStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getBookingStatus>>>
+export type GetBookingStatusQueryError = ErrorType<void>
+
+
+export function useGetBookingStatus<TData = Awaited<ReturnType<typeof getBookingStatus>>, TError = ErrorType<void>>(
+ params: GetBookingStatusParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBookingStatus>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getBookingStatus>>,
+          TError,
+          Awaited<ReturnType<typeof getBookingStatus>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetBookingStatus<TData = Awaited<ReturnType<typeof getBookingStatus>>, TError = ErrorType<void>>(
+ params: GetBookingStatusParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBookingStatus>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getBookingStatus>>,
+          TError,
+          Awaited<ReturnType<typeof getBookingStatus>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetBookingStatus<TData = Awaited<ReturnType<typeof getBookingStatus>>, TError = ErrorType<void>>(
+ params: GetBookingStatusParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBookingStatus>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Check a booking with its private tracking token
+ */
+
+export function useGetBookingStatus<TData = Awaited<ReturnType<typeof getBookingStatus>>, TError = ErrorType<void>>(
+ params: GetBookingStatusParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBookingStatus>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetBookingStatusQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetAdminSessionUrl = () => {
 
@@ -915,6 +1483,80 @@ export function useListPendingBarbers<TData = Awaited<ReturnType<typeof listPend
 
 
 
+
+export const getIssueBarberAccessCodeUrl = (barberId: number,) => {
+
+
+
+
+  return `/api/admin/barbers/${barberId}/access-code`
+}
+
+/**
+ * @summary Issue a new login code for an active barber
+ */
+export const issueBarberAccessCode = async (barberId: number, options?: Parameters<typeof customFetch>[1]): Promise<BarberAccessCode> => {
+
+  return customFetch<BarberAccessCode>(getIssueBarberAccessCodeUrl(barberId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getIssueBarberAccessCodeMutationKey = () => ['issueBarberAccessCode'] as const;
+
+export const getIssueBarberAccessCodeMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof issueBarberAccessCode>>, TError,IssueBarberAccessCodeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof issueBarberAccessCode>>, TError,IssueBarberAccessCodeMutationVariables, TContext> => {
+
+const mutationKey = getIssueBarberAccessCodeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof issueBarberAccessCode>>, IssueBarberAccessCodeMutationVariables> = (props) => {
+          const {barberId} = props ?? {};
+
+          return  issueBarberAccessCode(barberId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type IssueBarberAccessCodeMutationResult = NonNullable<Awaited<ReturnType<typeof issueBarberAccessCode>>>
+
+    export type IssueBarberAccessCodeMutationError = ErrorType<void>
+    export type IssueBarberAccessCodeMutationVariables = {barberId: number}
+
+    /**
+ * @summary Issue a new login code for an active barber
+ */
+export const useIssueBarberAccessCode = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof issueBarberAccessCode>>, TError,IssueBarberAccessCodeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof issueBarberAccessCode>>,
+        TError,
+        IssueBarberAccessCodeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getIssueBarberAccessCodeMutationOptions(options), queryClient);
+    }
 
 export const getModerateBarberUrl = (barberId: number,) => {
 

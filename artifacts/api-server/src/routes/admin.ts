@@ -1,8 +1,10 @@
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { and, asc, eq } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 import {
   GetAdminSessionResponse,
+  IssueBarberAccessCodeParams,
+  IssueBarberAccessCodeResponse,
   ListPendingBarbersResponse,
   LoginAdminBody,
   LoginAdminResponse,
@@ -187,6 +189,35 @@ router.get("/admin/barbers", async (req, res): Promise<void> => {
     .orderBy(asc(barbersTable.createdAt));
 
   res.json(ListPendingBarbersResponse.parse(barbers));
+});
+
+router.post("/admin/barbers/:barberId/access-code", async (req, res): Promise<void> => {
+  if (!requireAdmin(req, res)) return;
+  res.setHeader("Cache-Control", "no-store");
+  const params = IssueBarberAccessCodeParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const accessCode = randomBytes(32).toString("base64url");
+  const accessCodeHash = createHash("sha256").update(accessCode).digest("hex");
+  const [barber] = await db
+    .update(barbersTable)
+    .set({ accessCodeHash })
+    .where(
+      and(
+        eq(barbersTable.id, params.data.barberId),
+        eq(barbersTable.status, "active"),
+      ),
+    )
+    .returning({ id: barbersTable.id });
+  if (!barber) {
+    res.status(404).json({ error: "Active barber not found" });
+    return;
+  }
+
+  res.json(IssueBarberAccessCodeResponse.parse({ barberId: barber.id, accessCode }));
 });
 
 router.patch("/admin/barbers/:barberId/status", async (req, res): Promise<void> => {

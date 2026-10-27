@@ -1,0 +1,1 @@
+- [Orval parameter naming](orval-param-naming.md) — Mixed path and query parameters can generate duplicate `<OperationId>Params` exports.

@@ -1,4 +1,4 @@
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 import {
@@ -9,11 +9,16 @@ import {
   GetBookingStatusQueryParams,
   GetBookingStatusResponse,
   ListBarberBookingsResponse,
+  LoginBarberByEmailBody,
+  LoginBarberByEmailResponse,
   LoginBarberBody,
   LoginBarberResponse,
   LogoutBarberResponse,
+  RecoverBarberPasswordBody,
+  RecoverBarberPasswordResponse,
 } from "@workspace/api-zod";
 import { db, barbersTable, bookingsTable } from "@workspace/db";
+import { hashPassword, normalizeEmail, verifyPassword } from "../lib/password";
 
 const router: IRouter = Router();
 const BARBER_COOKIE = "barberlink_barber";
@@ -25,6 +30,10 @@ const failedLoginAttempts = new Map<string, { count: number; expiresAt: number }
 
 function hash(value: string): string {
   return createHash("sha256").update(value).digest("hex");
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "23505";
 }
 
 function readBarberId(req: Request): number | null {
@@ -134,6 +143,52 @@ router.get("/barber/session", async (req, res): Promise<void> => {
   );
 });
 
+router.post("/barber/email-session", async (req, res): Promise<void> => {
+  res.setHeader("Cache-Control", "no-store");
+  const sessionSecret = process.env.SESSION_SECRET;
+  if (!sessionSecret) {
+    res.status(503).json({ error: "Barber authentication is not configured" });
+    return;
+  }
+
+  const parsed = LoginBarberByEmailBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  if (tooManyLoginAttempts(req, res)) return;
+
+  const email = normalizeEmail(parsed.data.email);
+  const [barber] = await db
+    .select({
+      id: barbersTable.id,
+      name: barbersTable.name,
+      passwordHash: barbersTable.passwordHash,
+    })
+    .from(barbersTable)
+    .where(eq(barbersTable.email, email))
+    .limit(1);
+
+  const valid = barber?.passwordHash
+    ? await verifyPassword(parsed.data.password, barber.passwordHash)
+    : false;
+  if (!valid || !barber) {
+    recordFailedLogin(req);
+    res.status(401).json({ error: "Invalid barber credentials" });
+    return;
+  }
+
+  failedLoginAttempts.delete(req.ip || req.socket.remoteAddress || "unknown");
+  setBarberCookie(req, res, barber.id);
+  res.json(
+    LoginBarberByEmailResponse.parse({
+      authenticated: true,
+      barberId: barber.id,
+      barberName: barber.name,
+    }),
+  );
+});
+
 router.post("/barber/session", async (req, res): Promise<void> => {
   res.setHeader("Cache-Control", "no-store");
   const sessionSecret = process.env.SESSION_SECRET;
@@ -177,6 +232,87 @@ router.post("/barber/session", async (req, res): Promise<void> => {
       authenticated: true,
       barberId: barber.id,
       barberName: barber.name,
+    }),
+  );
+});
+
+router.post("/barber/password-recovery", async (req, res): Promise<void> => {
+  res.setHeader("Cache-Control", "no-store");
+  const parsed = RecoverBarberPasswordBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  if (tooManyLoginAttempts(req, res)) return;
+
+  const [barber] = await db
+    .select({
+      id: barbersTable.id,
+      accessCodeHash: barbersTable.accessCodeHash,
+    })
+    .from(barbersTable)
+    .where(eq(barbersTable.id, parsed.data.barberId))
+    .limit(1);
+
+  const storedCodeHash = barber?.accessCodeHash;
+  const suppliedCodeHash = Buffer.from(hash(parsed.data.accessCode));
+  const expectedCodeHash = Buffer.from(storedCodeHash ?? "");
+  const validCode =
+    storedCodeHash !== null &&
+    storedCodeHash !== undefined &&
+    suppliedCodeHash.length === expectedCodeHash.length &&
+    timingSafeEqual(suppliedCodeHash, expectedCodeHash);
+  if (!barber || !validCode) {
+    recordFailedLogin(req);
+    res.status(401).json({ error: "Invalid recovery credentials" });
+    return;
+  }
+
+  const email = normalizeEmail(parsed.data.email);
+  const [emailOwner] = await db
+    .select({ id: barbersTable.id })
+    .from(barbersTable)
+    .where(eq(barbersTable.email, email))
+    .limit(1);
+  if (emailOwner && emailOwner.id !== barber.id) {
+    res.status(409).json({ error: "This email is already registered" });
+    return;
+  }
+
+  const passwordHash = await hashPassword(parsed.data.password);
+  const accessCode = randomBytes(32).toString("base64url");
+  const accessCodeHash = hash(accessCode);
+  let updatedBarber: { id: number } | undefined;
+  try {
+    [updatedBarber] = await db
+      .update(barbersTable)
+      .set({ email, passwordHash, accessCodeHash })
+      .where(
+        and(
+          eq(barbersTable.id, barber.id),
+          eq(barbersTable.accessCodeHash, storedCodeHash),
+        ),
+      )
+      .returning({ id: barbersTable.id });
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      res.status(409).json({ error: "This email is already registered" });
+      return;
+    }
+    throw error;
+  }
+  if (!updatedBarber) {
+    recordFailedLogin(req);
+    res.status(401).json({ error: "Invalid recovery credentials" });
+    return;
+  }
+
+  failedLoginAttempts.delete(req.ip || req.socket.remoteAddress || "unknown");
+  res.json(
+    RecoverBarberPasswordResponse.parse({
+      barberId: updatedBarber.id,
+      email,
+      accessCode,
     }),
   );
 });

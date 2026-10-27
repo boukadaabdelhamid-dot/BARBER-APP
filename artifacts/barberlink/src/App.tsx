@@ -14,6 +14,8 @@ import {
   useListPendingBarbers,
   useLoginAdmin,
   useLoginBarber,
+  useLoginBarberByEmail,
+  useRecoverBarberPassword,
   useIssueBarberAccessCode,
   useLogoutAdmin,
   useLogoutBarber,
@@ -631,6 +633,11 @@ function Join() {
   const submitProfile = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    const password = String(form.get('password') || '');
+    if (password !== String(form.get('passwordConfirm') || '')) {
+      setFormError('كلمتا المرور غير متطابقتين.');
+      return;
+    }
     const serviceInputs = services.map((service, index) => ({
       id: `service-${index + 1}`,
       name: service.name.trim(),
@@ -643,6 +650,8 @@ function Join() {
       areas: String(form.get('areas') || '').split(/[،,]/).map((area) => area.trim()).filter(Boolean),
       bio: String(form.get('bio') || '').trim(),
       phone: String(form.get('phone') || '').trim(),
+      email: String(form.get('email') || '').trim().toLowerCase(),
+      password,
       travelFee: Number(form.get('travelFee') || 0),
       currency: String(form.get('currency') || '').trim().toUpperCase(),
       services: serviceInputs,
@@ -650,7 +659,7 @@ function Join() {
     setFormError('');
     createBarber.mutate({ data: payload }, {
       onSuccess: (result) => setSuccess({ id: result.id, message: result.message, accessCode: result.accessCode }),
-      onError: () => setFormError('لم نتمكن من إرسال ملفك. راجع الحقول وحاول مرة أخرى.'),
+      onError: () => setFormError('تعذّر إرسال الملف. تحقق من الحقول، وتأكد أن البريد غير مسجل من قبل.'),
     });
   };
 
@@ -673,7 +682,7 @@ function Join() {
             <div className="access-code-panel" dir="rtl">
               <strong>رمز دخولك إلى لوحة الحلاق</strong>
               <code>{success.accessCode}</code>
-              <p>احتفظ بهذا الرمز؛ لن نعرضه مرة أخرى. تحتاج إليه مع رقم الطلب لتسجيل الدخول ومتابعة الحجوزات.</p>
+              <p>استخدم بريدك وكلمة المرور للدخول. احتفظ برقم الملف والرمز الاحتياطي؛ لن نعرض الرمز مرة أخرى، وستحتاج إليه إذا نسيت كلمة المرور.</p>
               <button
                 type="button"
                 className="admin-secondary-button"
@@ -682,11 +691,11 @@ function Join() {
                   try {
                     await navigator.clipboard.writeText(value);
                   } catch {
-                    window.prompt('انسخ رقم الحلاق ورمز الدخول', value);
+                    window.prompt('انسخ رقم الحلاق ورمز الاسترداد', value);
                   }
                 }}
               >
-                <Clipboard size={15} /> نسخ رقم الحلاق والرمز
+                <Clipboard size={15} /> نسخ رقم الحلاق ورمز الاسترداد
               </button>
             </div>
             <Link href="/barber" className="submit-button" data-testid="link-barber-dashboard">فتح لوحة الحلاق</Link>
@@ -707,6 +716,21 @@ function Join() {
                   <input id="barber-city" name="city" required minLength={2} maxLength={100} placeholder="المدينة التي تعمل فيها" data-testid="input-barber-city" />
                 </div>
               </div>
+              <div className="form-grid">
+                <div className="field">
+                  <label htmlFor="barber-email">البريد الإلكتروني للدخول</label>
+                  <input id="barber-email" name="email" type="email" required maxLength={254} autoComplete="email" placeholder="name@example.com" data-testid="input-barber-email" />
+                </div>
+                <div className="field">
+                  <label htmlFor="barber-password">كلمة المرور</label>
+                  <input id="barber-password" name="password" type="password" required minLength={12} maxLength={128} autoComplete="new-password" placeholder="12 حرفًا على الأقل" data-testid="input-barber-password" />
+                </div>
+              </div>
+              <div className="field">
+                <label htmlFor="barber-password-confirm">تأكيد كلمة المرور</label>
+                <input id="barber-password-confirm" name="passwordConfirm" type="password" required minLength={12} maxLength={128} autoComplete="new-password" placeholder="أعد كتابة كلمة المرور" data-testid="input-barber-password-confirm" />
+              </div>
+              <div className="small-print" style={{ margin: '-4px 0 17px' }}>لا نرسل رسالة تحقق حاليًا؛ تأكد من صحة البريد واحفظ رمز الاسترداد الظاهر بعد التسجيل.</div>
               <div className="field">
                 <label htmlFor="barber-areas">الأحياء أو المناطق التي تغطيها</label>
                 <input id="barber-areas" name="areas" required placeholder="افصل بين المناطق بفاصلة" data-testid="input-barber-areas" />
@@ -1171,11 +1195,37 @@ function BarberPortal() {
     },
   });
   const login = useLoginBarber();
+  const emailLogin = useLoginBarberByEmail();
+  const recoverPassword = useRecoverBarberPassword();
   const logout = useLogoutBarber();
   const decideBooking = useDecideBarberBooking();
+  const [loginMode, setLoginMode] = useState<'email' | 'legacy' | 'recover'>('email');
   const [loginError, setLoginError] = useState('');
+  const [recoveryResult, setRecoveryResult] = useState<{ barberId: number; email: string; accessCode: string } | null>(null);
   const [decisionError, setDecisionError] = useState('');
   const [busyBooking, setBusyBooking] = useState<number | null>(null);
+
+  const refreshBarberSession = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: getGetBarberSessionQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getListBarberBookingsQueryKey() }),
+    ]);
+  };
+
+  const submitEmailLogin = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    setLoginError('');
+    emailLogin.mutate({
+      data: {
+        email: String(form.get('email') || '').trim().toLowerCase(),
+        password: String(form.get('password') || ''),
+      },
+    }, {
+      onSuccess: refreshBarberSession,
+      onError: () => setLoginError('البريد الإلكتروني أو كلمة المرور غير صحيحة.'),
+    });
+  };
 
   const submitLogin = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -1187,11 +1237,32 @@ function BarberPortal() {
         accessCode: String(form.get('accessCode') || '').trim(),
       },
     }, {
-      onSuccess: async () => {
-        await queryClient.invalidateQueries({ queryKey: getGetBarberSessionQueryKey() });
-        await queryClient.invalidateQueries({ queryKey: getListBarberBookingsQueryKey() });
-      },
+      onSuccess: refreshBarberSession,
       onError: () => setLoginError('رقم الحلاق أو رمز الدخول غير صحيح.'),
+    });
+  };
+
+  const submitRecovery = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const password = String(form.get('password') || '');
+    if (password !== String(form.get('passwordConfirm') || '')) {
+      setLoginError('كلمتا المرور غير متطابقتين.');
+      return;
+    }
+
+    setLoginError('');
+    setRecoveryResult(null);
+    recoverPassword.mutate({
+      data: {
+        barberId: Number(form.get('barberId')),
+        accessCode: String(form.get('accessCode') || '').trim(),
+        email: String(form.get('email') || '').trim().toLowerCase(),
+        password,
+      },
+    }, {
+      onSuccess: (result) => setRecoveryResult(result),
+      onError: () => setLoginError('تعذّر تحديث الحساب. تحقق من رقم الملف والرمز، وأن البريد غير مستخدم بحساب آخر.'),
     });
   };
 
@@ -1242,17 +1313,74 @@ function BarberPortal() {
             <div className="admin-login-icon"><Scissors aria-hidden="true" /></div>
             <div className="admin-kicker">BarberLink · مساحة الحلاق</div>
             <h1>طلباتك،<br /><em>في مكان واحد.</em></h1>
-            <p>استخدم رقم الحلاق ورمز الدخول اللذين ظهرا بعد إرسال ملفك.</p>
+            <p>{loginMode === 'recover' ? 'استخدم رقم الملف ورمز الاسترداد لتعيين بريد وكلمة مرور جديدين.' : 'سجّل الدخول ببريدك وكلمة المرور، أو استخدم بيانات الملف للحسابات القديمة.'}</p>
             {loginError && <div className="admin-alert" role="alert"><AlertCircle size={17} />{loginError}</div>}
-            <form className="admin-login-form" onSubmit={submitLogin} data-testid="form-barber-login">
-              <label htmlFor="barber-account-id">رقم الحلاق</label>
-              <input id="barber-account-id" name="barberId" type="number" min="1" autoComplete="username" required data-testid="input-barber-id" />
-              <label htmlFor="barber-access-code">رمز الدخول</label>
-              <input id="barber-access-code" name="accessCode" type="password" autoComplete="current-password" minLength={32} maxLength={128} required data-testid="input-barber-access-code" />
-              <button className="admin-primary-button" type="submit" disabled={login.isPending} data-testid="button-barber-login">
-                {login.isPending ? 'جارٍ التحقق…' : <>دخول إلى الطلبات <ArrowLeft size={17} /></>}
-              </button>
-            </form>
+            {loginMode !== 'recover' && (
+              <div className="barber-login-tabs" role="group" aria-label="طريقة دخول الحلاق">
+                <button type="button" aria-pressed={loginMode === 'email'} onClick={() => { setLoginMode('email'); setLoginError(''); }}>البريد وكلمة المرور</button>
+                <button type="button" aria-pressed={loginMode === 'legacy'} onClick={() => { setLoginMode('legacy'); setLoginError(''); }}>رقم الملف والرمز</button>
+              </div>
+            )}
+            {loginMode === 'email' && (
+              <>
+                <form className="admin-login-form" onSubmit={submitEmailLogin} data-testid="form-barber-email-login">
+                  <label htmlFor="barber-login-email">البريد الإلكتروني</label>
+                  <input id="barber-login-email" name="email" type="email" autoComplete="email" required maxLength={254} data-testid="input-barber-login-email" />
+                  <label htmlFor="barber-login-password">كلمة المرور</label>
+                  <input id="barber-login-password" name="password" type="password" autoComplete="current-password" required minLength={12} maxLength={128} data-testid="input-barber-login-password" />
+                  <button className="admin-primary-button" type="submit" disabled={emailLogin.isPending} data-testid="button-barber-email-login">
+                    {emailLogin.isPending ? 'جارٍ التحقق…' : <>دخول إلى الطلبات <ArrowLeft size={17} /></>}
+                  </button>
+                </form>
+                <button className="barber-login-link" type="button" onClick={() => { setLoginMode('recover'); setLoginError(''); setRecoveryResult(null); }}>
+                  نسيت كلمة المرور أو تريد تفعيل بريد لحساب قديم؟
+                </button>
+              </>
+            )}
+            {loginMode === 'legacy' && (
+              <>
+                <form className="admin-login-form" onSubmit={submitLogin} data-testid="form-barber-login">
+                  <label htmlFor="barber-account-id">رقم الحلاق</label>
+                  <input id="barber-account-id" name="barberId" type="number" min="1" autoComplete="username" required data-testid="input-barber-id" />
+                  <label htmlFor="barber-access-code">رمز الدخول</label>
+                  <input id="barber-access-code" name="accessCode" type="password" autoComplete="current-password" minLength={32} maxLength={128} required data-testid="input-barber-access-code" />
+                  <button className="admin-primary-button" type="submit" disabled={login.isPending} data-testid="button-barber-login">
+                    {login.isPending ? 'جارٍ التحقق…' : <>دخول إلى الطلبات <ArrowLeft size={17} /></>}
+                  </button>
+                </form>
+                <button className="barber-login-link" type="button" onClick={() => { setLoginMode('recover'); setLoginError(''); setRecoveryResult(null); }}>
+                  تعيين بريد وكلمة مرور أو استعادة كلمة المرور
+                </button>
+              </>
+            )}
+            {loginMode === 'recover' && recoveryResult ? (
+              <div className="barber-recovery-result" data-testid="status-barber-password-recovered">
+                <strong>تم تحديث بيانات الدخول</strong>
+                <span>استخدم البريد الجديد وكلمة المرور لتسجيل الدخول. احفظ رمز الاسترداد الجديد؛ الرمز السابق لم يعد صالحًا.</span>
+                <code>{recoveryResult.accessCode}</code>
+                <button className="admin-secondary-button" type="button" onClick={() => { setLoginMode('email'); setRecoveryResult(null); setLoginError(''); }}>العودة إلى تسجيل الدخول</button>
+              </div>
+            ) : loginMode === 'recover' ? (
+              <>
+                <form className="admin-login-form" onSubmit={submitRecovery} data-testid="form-barber-password-recovery">
+                  <label htmlFor="recovery-barber-id">رقم الحلاق</label>
+                  <input id="recovery-barber-id" name="barberId" type="number" min="1" required data-testid="input-recovery-barber-id" />
+                  <label htmlFor="recovery-access-code">رمز الاسترداد</label>
+                  <input id="recovery-access-code" name="accessCode" type="password" minLength={32} maxLength={128} required data-testid="input-recovery-access-code" />
+                  <label htmlFor="recovery-email">البريد الإلكتروني الجديد أو الحالي</label>
+                  <input id="recovery-email" name="email" type="email" maxLength={254} required autoComplete="email" data-testid="input-recovery-email" />
+                  <label htmlFor="recovery-password">كلمة المرور الجديدة</label>
+                  <input id="recovery-password" name="password" type="password" minLength={12} maxLength={128} required autoComplete="new-password" data-testid="input-recovery-password" />
+                  <label htmlFor="recovery-password-confirm">تأكيد كلمة المرور</label>
+                  <input id="recovery-password-confirm" name="passwordConfirm" type="password" minLength={12} maxLength={128} required autoComplete="new-password" data-testid="input-recovery-password-confirm" />
+                  <button className="admin-primary-button" type="submit" disabled={recoverPassword.isPending} data-testid="button-barber-password-recovery">
+                    {recoverPassword.isPending ? 'جارٍ تحديث الحساب…' : <>تحديث البريد وكلمة المرور <ArrowLeft size={17} /></>}
+                  </button>
+                </form>
+                <p className="barber-recovery-note">لا نرسل رسالة تحقق حاليًا. أدخل بريدًا تملكه واحفظ رمز الاسترداد الجديد بعد التحديث.</p>
+                <button className="barber-login-link" type="button" onClick={() => { setLoginMode('email'); setLoginError(''); }}>العودة إلى تسجيل الدخول</button>
+              </>
+            ) : null}
             <div className="admin-login-foot"><Shield size={14} /> لا يمكن للحلاق الاطلاع إلا على طلباته</div>
           </section>
         ) : (

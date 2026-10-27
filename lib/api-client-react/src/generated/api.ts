@@ -32,7 +32,10 @@ import type {
   BarberBooking,
   BarberCredentialsInput,
   BarberDecisionInput,
+  BarberEmailCredentialsInput,
   BarberInput,
+  BarberPasswordRecovery,
+  BarberPasswordRecoveryInput,
   BarberReview,
   BarberSession,
   BarberSubmission,
@@ -732,6 +735,182 @@ export const useLogoutBarber = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getLogoutBarberMutationOptions(options), queryClient);
+    }
+
+export const getLoginBarberByEmailUrl = () => {
+
+
+
+
+  return `/api/barber/email-session`
+}
+
+/**
+ * @summary Start a barber session with email and password
+ */
+export const loginBarberByEmail = async (barberEmailCredentialsInput: BarberEmailCredentialsInput, options?: Parameters<typeof customFetch>[1]): Promise<BarberSession> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<BarberSession>(getLoginBarberByEmailUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(barberEmailCredentialsInput)
+  }
+);}
+
+
+
+
+
+export const getLoginBarberByEmailMutationKey = () => ['loginBarberByEmail'] as const;
+
+export const getLoginBarberByEmailMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loginBarberByEmail>>, TError,LoginBarberByEmailMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof loginBarberByEmail>>, TError,LoginBarberByEmailMutationVariables, TContext> => {
+
+const mutationKey = getLoginBarberByEmailMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof loginBarberByEmail>>, LoginBarberByEmailMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  loginBarberByEmail(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LoginBarberByEmailMutationResult = NonNullable<Awaited<ReturnType<typeof loginBarberByEmail>>>
+    export type LoginBarberByEmailMutationBody = BodyType<BarberEmailCredentialsInput>
+    export type LoginBarberByEmailMutationError = ErrorType<void>
+    export type LoginBarberByEmailMutationVariables = {data: BodyType<BarberEmailCredentialsInput>}
+
+    /**
+ * @summary Start a barber session with email and password
+ */
+export const useLoginBarberByEmail = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loginBarberByEmail>>, TError,LoginBarberByEmailMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof loginBarberByEmail>>,
+        TError,
+        LoginBarberByEmailMutationVariables,
+        TContext
+      > => {
+      return useMutation(getLoginBarberByEmailMutationOptions(options), queryClient);
+    }
+
+export const getRecoverBarberPasswordUrl = () => {
+
+
+
+
+  return `/api/barber/password-recovery`
+}
+
+/**
+ * @summary Recover a barber password with the backup access code
+ */
+export const recoverBarberPassword = async (barberPasswordRecoveryInput: BarberPasswordRecoveryInput, options?: Parameters<typeof customFetch>[1]): Promise<BarberPasswordRecovery> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<BarberPasswordRecovery>(getRecoverBarberPasswordUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(barberPasswordRecoveryInput)
+  }
+);}
+
+
+
+
+
+export const getRecoverBarberPasswordMutationKey = () => ['recoverBarberPassword'] as const;
+
+export const getRecoverBarberPasswordMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recoverBarberPassword>>, TError,RecoverBarberPasswordMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recoverBarberPassword>>, TError,RecoverBarberPasswordMutationVariables, TContext> => {
+
+const mutationKey = getRecoverBarberPasswordMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recoverBarberPassword>>, RecoverBarberPasswordMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  recoverBarberPassword(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecoverBarberPasswordMutationResult = NonNullable<Awaited<ReturnType<typeof recoverBarberPassword>>>
+    export type RecoverBarberPasswordMutationBody = BodyType<BarberPasswordRecoveryInput>
+    export type RecoverBarberPasswordMutationError = ErrorType<void>
+    export type RecoverBarberPasswordMutationVariables = {data: BodyType<BarberPasswordRecoveryInput>}
+
+    /**
+ * @summary Recover a barber password with the backup access code
+ */
+export const useRecoverBarberPassword = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recoverBarberPassword>>, TError,RecoverBarberPasswordMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof recoverBarberPassword>>,
+        TError,
+        RecoverBarberPasswordMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRecoverBarberPasswordMutationOptions(options), queryClient);
     }
 
 export const getListBarberBookingsUrl = () => {

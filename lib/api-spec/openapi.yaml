@@ -137,6 +137,54 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BarberSession"
+  /barber/email-session:
+    post:
+      operationId: loginBarberByEmail
+      tags: [barberPortal]
+      summary: Start a barber session with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BarberEmailCredentialsInput"
+      responses:
+        "200":
+          description: Barber session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BarberSession"
+        "401":
+          description: Invalid barber credentials
+        "429":
+          description: Too many login attempts
+        "503":
+          description: Barber authentication is not configured
+  /barber/password-recovery:
+    post:
+      operationId: recoverBarberPassword
+      tags: [barberPortal]
+      summary: Recover a barber password with the backup access code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BarberPasswordRecoveryInput"
+      responses:
+        "200":
+          description: Password and email updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BarberPasswordRecovery"
+        "401":
+          description: Invalid recovery credentials
+        "409":
+          description: Email already belongs to another barber
+        "429":
+          description: Too many recovery attempts
   /barber/bookings:
     get:
       operationId: listBarberBookings
@@ -386,7 +434,7 @@ components:
         price: { type: number, minimum: 0, maximum: 10000 }
     BarberInput:
       type: object
-      required: [name, city, areas, bio, phone, travelFee, currency, services]
+      required: [name, city, areas, bio, phone, email, password, travelFee, currency, services]
       properties:
         name: { type: string, minLength: 2, maxLength: 100 }
         city: { type: string, minLength: 2, maxLength: 100 }
@@ -396,6 +444,8 @@ components:
           items: { type: string, minLength: 2, maxLength: 100 }
         bio: { type: string, minLength: 10, maxLength: 500 }
         phone: { type: string, minLength: 7, maxLength: 30 }
+        email: { type: string, format: email, maxLength: 254 }
+        password: { type: string, minLength: 12, maxLength: 128 }
         travelFee: { type: number, minimum: 0, maximum: 10000 }
         currency: { type: string, minLength: 3, maxLength: 3 }
         services:
@@ -416,6 +466,27 @@ components:
       required: [barberId, accessCode]
       properties:
         barberId: { type: integer }
+        accessCode: { type: string, minLength: 32, maxLength: 128 }
+    BarberEmailCredentialsInput:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email, maxLength: 254 }
+        password: { type: string, minLength: 12, maxLength: 128 }
+    BarberPasswordRecoveryInput:
+      type: object
+      required: [barberId, accessCode, email, password]
+      properties:
+        barberId: { type: integer, minimum: 1 }
+        accessCode: { type: string, minLength: 32, maxLength: 128 }
+        email: { type: string, format: email, maxLength: 254 }
+        password: { type: string, minLength: 12, maxLength: 128 }
+    BarberPasswordRecovery:
+      type: object
+      required: [barberId, email, accessCode]
+      properties:
+        barberId: { type: integer }
+        email: { type: string, format: email }
         accessCode: { type: string, minLength: 32, maxLength: 128 }
     BarberSession:
       type: object

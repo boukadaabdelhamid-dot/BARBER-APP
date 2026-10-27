@@ -34,6 +34,13 @@ export interface BarberInput {
      * @maxLength 30
      */
   phone: string;
+  /** @maxLength 254 */
+  email: string;
+  /**
+     * @minLength 12
+     * @maxLength 128
+     */
+  password: string;
   /**
      * @minimum 0
      * @maximum 10000

@@ -92,6 +92,13 @@ export interface BarberInput {
      * @maxLength 30
      */
   phone: string;
+  /** @maxLength 254 */
+  email: string;
+  /**
+     * @minLength 12
+     * @maxLength 128
+     */
+  password: string;
   /**
      * @minimum 0
      * @maximum 10000
@@ -126,6 +133,43 @@ export interface BarberSubmission {
 
 export interface BarberCredentialsInput {
   barberId: number;
+  /**
+     * @minLength 32
+     * @maxLength 128
+     */
+  accessCode: string;
+}
+
+export interface BarberEmailCredentialsInput {
+  /** @maxLength 254 */
+  email: string;
+  /**
+     * @minLength 12
+     * @maxLength 128
+     */
+  password: string;
+}
+
+export interface BarberPasswordRecoveryInput {
+  /** @minimum 1 */
+  barberId: number;
+  /**
+     * @minLength 32
+     * @maxLength 128
+     */
+  accessCode: string;
+  /** @maxLength 254 */
+  email: string;
+  /**
+     * @minLength 12
+     * @maxLength 128
+     */
+  password: string;
+}
+
+export interface BarberPasswordRecovery {
+  barberId: number;
+  email: string;
   /**
      * @minLength 32
      * @maxLength 128

@@ -1,5 +1,5 @@
 import { createInsertSchema } from "drizzle-zod";
-import { integer, jsonb, pgTable, real, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { integer, jsonb, pgTable, real, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
 
 export type BarberService = {
@@ -20,12 +20,14 @@ export const barbersTable = pgTable("barbers", {
   travelFee: real("travel_fee").notNull().default(0),
   currency: text("currency").notNull().default("EUR"),
   phone: text("phone").notNull(),
+  email: text("email"),
+  passwordHash: text("password_hash"),
   accessCodeHash: text("access_code_hash"),
   imageUrl: text("image_url"),
   status: text("status").notNull().default("pending"),
   services: jsonb("services").$type<BarberService[]>().notNull().default([]),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [uniqueIndex("barbers_email_unique").on(table.email)]);
 
 export const insertBarberSchema = createInsertSchema(barbersTable).omit({
   id: true,

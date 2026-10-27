@@ -12,8 +12,13 @@ import {
   ListBarbersResponse,
 } from "@workspace/api-zod";
 import { db, barbersTable, bookingsTable } from "@workspace/db";
+import { hashPassword, normalizeEmail } from "../lib/password";
 
 const router: IRouter = Router();
+
+function isUniqueViolation(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "23505";
+}
 
 router.get("/barbers", async (req, res): Promise<void> => {
   const parsed = ListBarbersQueryParams.safeParse(req.query);
@@ -77,21 +82,45 @@ router.post("/barbers", async (req, res): Promise<void> => {
     return;
   }
 
+  const { email: submittedEmail, password, ...profile } = parsed.data;
+  const email = normalizeEmail(submittedEmail);
+  const [existingEmail] = await db
+    .select({ id: barbersTable.id })
+    .from(barbersTable)
+    .where(eq(barbersTable.email, email))
+    .limit(1);
+  if (existingEmail) {
+    res.status(409).json({ error: "This email is already registered" });
+    return;
+  }
+
   const accessCode = randomBytes(32).toString("base64url");
   const accessCodeHash = createHash("sha256").update(accessCode).digest("hex");
-  const [createdBarber] = await db
-    .insert(barbersTable)
-    .values({
-      ...parsed.data,
-      accessCodeHash,
-      imageUrl: null,
-      status: "pending",
-    })
-    .returning({ id: barbersTable.id });
+  let barberId: number;
+  try {
+    const [createdBarber] = await db
+      .insert(barbersTable)
+      .values({
+        ...profile,
+        email,
+        passwordHash: await hashPassword(password),
+        accessCodeHash,
+        imageUrl: null,
+        status: "pending",
+      })
+      .returning({ id: barbersTable.id });
+    barberId = createdBarber.id;
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      res.status(409).json({ error: "This email is already registered" });
+      return;
+    }
+    throw error;
+  }
 
   res.status(201).json(
     CreateBarberResponse.parse({
-      id: createdBarber.id,
+      id: barberId,
       status: "pending",
       message: "تم استلام طلبك. سنتواصل معك بعد مراجعة الملف.",
       accessCode,

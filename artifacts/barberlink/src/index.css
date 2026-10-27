@@ -448,6 +448,15 @@ body { min-width: 320px; }
 .admin-login-panel>p { font-size:12px; }
 .admin-login-form { margin-top:26px; }
 .admin-login-form>label { display:block;color:#4c6055;font-size:11px;font-weight:700;margin-bottom:8px; }
+.barber-login-tabs { display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;margin-top:22px;border-radius:9px;background:#eeeee7; }
+.barber-login-tabs button { border:0;border-radius:6px;padding:10px 8px;background:transparent;color:#66746b;font-size:11px;font-weight:700; }
+.barber-login-tabs button[aria-pressed="true"] { background:#fcfbf7;color:#28584c;box-shadow:0 1px 4px rgba(30,50,42,.1); }
+.barber-login-link { display:block;margin:14px auto 0;padding:5px 8px;border:0;background:transparent;color:#376d5a;font-size:11px;font-weight:700;text-align:center; }
+.barber-login-link:hover { color:#a45f4e;text-decoration:underline; }
+.barber-recovery-note { margin:13px 0 0;color:#7c877f;font-size:10px;line-height:1.65; }
+.barber-recovery-result { display:grid;gap:12px;margin-top:23px;padding:17px;border:1px solid #cbd9cb;border-radius:10px;background:#f0f4eb;color:#345343;font-size:12px;line-height:1.6; }
+.barber-recovery-result code { overflow-wrap:anywhere;padding:11px;border:1px solid #dce3d8;border-radius:7px;background:#fcfbf7;color:#20383a;font-size:11px;direction:ltr;text-align:left; }
+.barber-recovery-result .admin-secondary-button { justify-content:center; }
 .admin-password-wrap { display:flex;align-items:center;border:1px solid #d9ddd2;background:#fffefa;border-radius:8px;height:48px;padding:0 11px;transition:border .18s,box-shadow .18s; }
 .admin-password-wrap:focus-within { border-color:#6d9582;box-shadow:0 0 0 3px rgba(49,105,84,.1); }
 .admin-password-wrap input { flex:1;min-width:0;border:0;outline:0;background:transparent;color:#273f3a;font-size:13px; }

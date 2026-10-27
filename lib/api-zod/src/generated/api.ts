@@ -67,6 +67,11 @@ export const createBarberBodyBioMax = 500;
 export const createBarberBodyPhoneMin = 7;
 export const createBarberBodyPhoneMax = 30;
 
+export const createBarberBodyEmailMax = 254;
+
+export const createBarberBodyPasswordMin = 12;
+export const createBarberBodyPasswordMax = 128;
+
 export const createBarberBodyTravelFeeMin = 0;
 export const createBarberBodyTravelFeeMax = 10000;
 
@@ -93,6 +98,8 @@ export const CreateBarberBody = zod.object({
   "areas": zod.array(zod.string().min(createBarberBodyAreasItemMin).max(createBarberBodyAreasItemMax)).min(1),
   "bio": zod.string().min(createBarberBodyBioMin).max(createBarberBodyBioMax),
   "phone": zod.string().min(createBarberBodyPhoneMin).max(createBarberBodyPhoneMax),
+  "email": zod.string().email().max(createBarberBodyEmailMax),
+  "password": zod.string().min(createBarberBodyPasswordMin).max(createBarberBodyPasswordMax),
   "travelFee": zod.number().min(createBarberBodyTravelFeeMin).max(createBarberBodyTravelFeeMax),
   "currency": zod.string().min(createBarberBodyCurrencyMin).max(createBarberBodyCurrencyMax),
   "services": zod.array(zod.object({
@@ -182,6 +189,61 @@ export const LogoutBarberResponse = zod.object({
   "authenticated": zod.boolean(),
   "barberId": zod.number().int().optional(),
   "barberName": zod.string().optional()
+})
+
+
+/**
+ * @summary Start a barber session with email and password
+ */
+export const loginBarberByEmailBodyEmailMax = 254;
+
+export const loginBarberByEmailBodyPasswordMin = 12;
+export const loginBarberByEmailBodyPasswordMax = 128;
+
+
+
+export const LoginBarberByEmailBody = zod.object({
+  "email": zod.string().email().max(loginBarberByEmailBodyEmailMax),
+  "password": zod.string().min(loginBarberByEmailBodyPasswordMin).max(loginBarberByEmailBodyPasswordMax)
+})
+
+export const LoginBarberByEmailResponse = zod.object({
+  "authenticated": zod.boolean(),
+  "barberId": zod.number().int().optional(),
+  "barberName": zod.string().optional()
+})
+
+
+/**
+ * @summary Recover a barber password with the backup access code
+ */
+
+export const recoverBarberPasswordBodyAccessCodeMin = 32;
+export const recoverBarberPasswordBodyAccessCodeMax = 128;
+
+export const recoverBarberPasswordBodyEmailMax = 254;
+
+export const recoverBarberPasswordBodyPasswordMin = 12;
+export const recoverBarberPasswordBodyPasswordMax = 128;
+
+
+
+export const RecoverBarberPasswordBody = zod.object({
+  "barberId": zod.number().int().min(1),
+  "accessCode": zod.string().min(recoverBarberPasswordBodyAccessCodeMin).max(recoverBarberPasswordBodyAccessCodeMax),
+  "email": zod.string().email().max(recoverBarberPasswordBodyEmailMax),
+  "password": zod.string().min(recoverBarberPasswordBodyPasswordMin).max(recoverBarberPasswordBodyPasswordMax)
+})
+
+export const recoverBarberPasswordResponseAccessCodeMin = 32;
+export const recoverBarberPasswordResponseAccessCodeMax = 128;
+
+
+
+export const RecoverBarberPasswordResponse = zod.object({
+  "barberId": zod.number().int(),
+  "email": zod.string().email(),
+  "accessCode": zod.string().min(recoverBarberPasswordResponseAccessCodeMin).max(recoverBarberPasswordResponseAccessCodeMax)
 })
 
 

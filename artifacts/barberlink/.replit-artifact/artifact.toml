@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "BarberLink"
+description = "A booking and customer relationship app connecting clients with mobile barbers. Clients can discover nearby mobile barbers and request appointments; barbers manage services, availability, and bookings. MVP starts without online payments."
+version = "1.0.0"
+id = "artifacts/barberlink"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21429
+
+[services.development]
+run = "pnpm --filter @workspace/barberlink run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/barberlink", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/barberlink/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21429"
+BASE_PATH = "/"

@@ -66,6 +66,7 @@ import {
   RefreshCw,
   LockKeyhole,
   LogOut,
+  Menu,
   Phone,
   UserRoundCheck,
   UserRoundX,
@@ -133,11 +134,55 @@ function Brand() {
 }
 
 function SiteHeader() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const headerRef = useRef<HTMLElement | null>(null);
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
   const supportWhatsapp = String(import.meta.env.VITE_SUPPORT_WHATSAPP ?? '').replace(/\D/g, '');
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !headerRef.current?.contains(event.target)) {
+        setMobileMenuOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMobileMenuOpen(false);
+        menuButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', closeOutside);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOutside);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [mobileMenuOpen]);
+
   return (
-    <header className="topbar">
+    <header className="topbar" ref={headerRef}>
       <Brand />
-      <nav className="nav-links" aria-label="التنقل الرئيسي">
+      <button
+        ref={menuButtonRef}
+        className="mobile-nav-toggle"
+        type="button"
+        aria-label={mobileMenuOpen ? 'إغلاق القائمة' : 'فتح القائمة'}
+        aria-expanded={mobileMenuOpen}
+        aria-controls="barberlink-main-navigation"
+        data-testid="button-mobile-navigation"
+        onClick={() => setMobileMenuOpen((open) => !open)}
+      >
+        {mobileMenuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
+      </button>
+      <nav
+        id="barberlink-main-navigation"
+        className={`nav-links${mobileMenuOpen ? ' is-open' : ''}`}
+        aria-label="التنقل الرئيسي"
+        onClick={(event) => {
+          if ((event.target as HTMLElement).closest('a')) setMobileMenuOpen(false);
+        }}
+      >
         <Link href="/discover" data-testid="link-discover">اكتشف الحلاقين</Link>
         <Link href="/my-bookings" data-testid="link-customer-bookings">طلباتي</Link>
         <Link href="/barber" data-testid="link-barber-portal">دخول الحلاق</Link>

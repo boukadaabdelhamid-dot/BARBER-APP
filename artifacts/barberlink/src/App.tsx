@@ -34,6 +34,7 @@ import {
   type BookingTracking,
   type BarberBooking,
 } from '@workspace/api-client-react';
+import { setBaseUrl } from '@workspace/api-client-react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -61,6 +62,8 @@ import {
   Shield,
   Clipboard,
 } from 'lucide-react';
+
+setBaseUrl(import.meta.env.VITE_API_BASE_URL || null);
 import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';

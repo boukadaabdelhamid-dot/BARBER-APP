@@ -8,7 +8,6 @@ import {
   useGetBarberSession,
   useGetBookingStatus,
   useGetAdminSession,
-  useHealthCheck,
   useListBarbers,
   useListBarberBookings,
   useListPendingBarbers,
@@ -20,6 +19,7 @@ import {
   useLogoutAdmin,
   useLogoutBarber,
   useModerateBarber,
+  useHealthCheck,
   getGetBarberQueryKey,
   getGetBarberSessionQueryKey,
   getGetBookingStatusQueryKey,
@@ -61,6 +61,7 @@ import {
   ChevronDown,
   Shield,
   Clipboard,
+  CreditCard,
 } from 'lucide-react';
 
 setBaseUrl(import.meta.env.VITE_API_BASE_URL || null);
@@ -101,6 +102,7 @@ function Brand() {
 }
 
 function SiteHeader() {
+  const supportWhatsapp = String(import.meta.env.VITE_SUPPORT_WHATSAPP ?? '').replace(/\D/g, '');
   return (
     <header className="topbar" dir="rtl">
       <Brand />
@@ -108,6 +110,11 @@ function SiteHeader() {
         <Link href="/discover" data-testid="link-discover">اكتشف الحلاقين</Link>
         <Link href="/my-bookings" data-testid="link-customer-bookings">طلباتي</Link>
         <Link href="/barber" data-testid="link-barber-portal">دخول الحلاق</Link>
+        {supportWhatsapp.length >= 8 && supportWhatsapp.length <= 15 && (
+          <a className="nav-support" href={`https://wa.me/${supportWhatsapp}`} target="_blank" rel="noreferrer" data-testid="link-whatsapp-support">
+            دعم واتساب
+          </a>
+        )}
         <Link href="/join" className="nav-join" data-testid="link-join">انضم كحلاق</Link>
       </nav>
     </header>
@@ -117,12 +124,18 @@ function SiteHeader() {
 function Welcome() {
   const [, navigate] = useLocation();
   const [step, setStep] = useState<'role' | 'barber-type'>('role');
+  const supportWhatsapp = String(import.meta.env.VITE_SUPPORT_WHATSAPP ?? '').replace(/\D/g, '');
 
   return (
     <div className="welcome-shell" dir="rtl">
       <header className="welcome-header">
         <Brand />
         <span className="welcome-header-note">حلاقة قريبة منك، بخطوات أسهل</span>
+        {supportWhatsapp.length >= 8 && supportWhatsapp.length <= 15 && (
+          <a className="welcome-support" href={`https://wa.me/${supportWhatsapp}`} target="_blank" rel="noreferrer" data-testid="link-whatsapp-support-welcome">
+            واتساب الدعم
+          </a>
+        )}
       </header>
       <main className="welcome-main">
         <div className="welcome-content">
@@ -243,19 +256,24 @@ function ErrorMessage({ onRetry, children }: { onRetry: () => void; children: Re
 
 function BarberCard({
   barber,
+  service,
+  covered,
+  showCoverage,
   onProfile,
   onBook,
 }: {
   barber: Barber;
+  service: Barber['services'][number];
+  covered: boolean;
+  showCoverage: boolean;
   onProfile: (id: number) => void;
   onBook: (id: number) => void;
 }) {
-  const service = barber.services[0];
   return (
     <article className="barber-card" dir="rtl" data-testid={`card-barber-${barber.id}`}>
       <div className="barber-photo">
         <BarberImage barber={barber} />
-        <span className="availability"><span /> متاح للحجز</span>
+        <span className="availability"><span /> ملف نشط</span>
       </div>
       <div className="card-body">
         <div className="card-name-row">
@@ -268,10 +286,14 @@ function BarberCard({
         </div>
         <div className="location-line"><MapPin aria-hidden="true" /> {barber.city}</div>
         <p className="card-bio">{barber.bio}</p>
-        {service && (
-          <div className="service-line" data-testid={`text-service-${service.id}`}>
-            <span>{service.name} · {service.durationMinutes} دقيقة</span>
-            <strong>{money(service.price, barber.currency)}</strong>
+        <div className="service-line" data-testid={`text-service-${service.id}`}>
+          <span>{service.name} · {service.durationMinutes} دقيقة</span>
+          <strong>{money(service.price, barber.currency)}</strong>
+        </div>
+        {showCoverage && (
+          <div className={`coverage-note ${covered ? 'covered' : ''}`} data-testid={`status-area-coverage-${barber.id}`}>
+            <MapPin aria-hidden="true" />
+            {covered ? 'منطقتك ضمن نطاق الخدمة المسجل' : 'التغطية في هذا الحي غير مدرجة'}
           </div>
         )}
         <div className="card-footer">
@@ -291,14 +313,16 @@ function BarberCard({
 }
 
 function Home() {
-  const [searchText, setSearchText] = useState('');
+  const [mode, setMode] = useState<'browse' | 'suggest'>('browse');
   const [city, setCity] = useState('');
+  const [area, setArea] = useState('');
+  const [serviceName, setServiceName] = useState('');
+  const [searchText, setSearchText] = useState('');
   const [activeBarberId, setActiveBarberId] = useState<number | null>(null);
   const [modalMode, setModalMode] = useState<'profile' | 'booking' | null>(null);
-  const params = useMemo(() => ({
-    ...(city.trim() ? { city: city.trim() } : {}),
-    ...(searchText.trim() ? { search: searchText.trim() } : {}),
-  }), [city, searchText]);
+  const [activeServiceId, setActiveServiceId] = useState('');
+  const [suggestionReady, setSuggestionReady] = useState(false);
+  const params = useMemo(() => ({}), []);
   const listQuery = useListBarbers(params, { query: { queryKey: getListBarbersQueryKey(params) } });
   const health = useHealthCheck();
   const barberQuery = useGetBarber(activeBarberId ?? 0, {
@@ -307,39 +331,101 @@ function Home() {
       queryKey: getGetBarberQueryKey(activeBarberId ?? 0),
     },
   });
-  const openProfile = (id: number) => { setActiveBarberId(id); setModalMode('profile'); };
-  const openBooking = (id: number) => { setActiveBarberId(id); setModalMode('booking'); };
-  const closeModal = () => { setModalMode(null); setActiveBarberId(null); };
   const barbers = (listQuery.data ?? []).filter((barber) => barber.status === 'active');
+  const cities = [...new Set(barbers.map((barber) => barber.city).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const cityBarbers = barbers.filter((barber) => !city || barber.city.trim().toLocaleLowerCase() === city.trim().toLocaleLowerCase());
+  const services = [...new Set(cityBarbers.flatMap((barber) => barber.services.map((service) => service.name)))].sort((a, b) => a.localeCompare(b));
+  const matchingBarbers = city && serviceName
+    ? cityBarbers
+      .map((barber) => ({ barber, service: barber.services.find((item) => item.name === serviceName) }))
+      .filter((match): match is { barber: Barber; service: Barber['services'][number] } => !!match.service)
+      .sort((a, b) => {
+        const aCovered = a.barber.areas.some((value) => value.trim().toLocaleLowerCase() === area.trim().toLocaleLowerCase());
+        const bCovered = b.barber.areas.some((value) => value.trim().toLocaleLowerCase() === area.trim().toLocaleLowerCase());
+        return Number(bCovered) - Number(aCovered) || b.barber.rating - a.barber.rating || b.barber.reviewCount - a.barber.reviewCount;
+      })
+    : [];
+  const areaIsCovered = (barber: Barber) => Boolean(area.trim()) &&
+    barber.areas.some((value) => value.trim().toLocaleLowerCase() === area.trim().toLocaleLowerCase());
+  const coveredMatches = matchingBarbers.filter(({ barber }) => areaIsCovered(barber));
+  const searchedMatches = searchText.trim()
+    ? matchingBarbers.filter(({ barber, service }) => {
+      const term = searchText.trim().toLocaleLowerCase();
+      return [barber.name, barber.city, barber.bio, ...barber.areas, service.name]
+        .some((value) => value.toLocaleLowerCase().includes(term));
+    })
+    : matchingBarbers;
+  const visibleMatches = mode === 'suggest' && suggestionReady ? coveredMatches.slice(0, 1) : searchedMatches;
+  const openProfile = (id: number) => {
+    const match = matchingBarbers.find((item) => item.barber.id === id);
+    setActiveServiceId(match?.service.id ?? '');
+    setActiveBarberId(id);
+    setModalMode('profile');
+  };
+  const openBooking = (id: number) => {
+    const match = matchingBarbers.find((item) => item.barber.id === id);
+    setActiveServiceId(match?.service.id ?? '');
+    setActiveBarberId(id);
+    setModalMode('booking');
+  };
+  const closeModal = () => { setModalMode(null); setActiveBarberId(null); setActiveServiceId(''); };
+  const clearCriteria = () => {
+    setCity('');
+    setArea('');
+    setServiceName('');
+    setSearchText('');
+    setSuggestionReady(false);
+  };
 
   return (
     <div className="site-shell" dir="rtl">
       <SiteHeader />
-      <main className="page-wrap">
-        <section className="hero" aria-labelledby="hero-title">
-          <div className="hero-copy">
-            <div className="eyebrow"><span className="eyebrow-dot" /> حلاقة على موعدك، في مكانك</div>
-            <h1 id="hero-title">الحلاقة المرتبة<br />تبدأ من باب بيتك.</h1>
-            <p>تعرّف إلى حلاقين متنقلين موثوقين في منطقتك. اختر الخدمة والوقت، ودع الحلاق يأتي إليك.</p>
-            <a className="hero-cta" href="#barbers" data-testid="link-browse-barbers">
-              اكتشف حلاقي منطقتك <ArrowLeft aria-hidden="true" />
-            </a>
+      <main className="page-wrap discover-page">
+        <section className="discover-intro">
+          <div className="discover-intro-copy">
+            <div className="section-label">اختيارك، بخطوة محلية</div>
+            <h1>موعد حلاقة<br /><em>يبدأ من حيّك.</em></h1>
+            <p>اختر حلاقًا بنفسك، أو دعنا نرشّح لك الأنسب حسب نطاق الخدمة المسجل وتقييم العملاء.</p>
           </div>
-          <div className="hero-stamp" aria-label="خدمة شخصية في منطقتك">
-            <span><strong>لك</strong>خدمة شخصية<br />في منطقتك</span>
+          <div className="discover-steps" aria-label="خطوات الطلب">
+            <div className="discover-step"><span className="step-number">01</span><span>حدّد موقعك والخدمة</span></div>
+            <i aria-hidden="true" />
+            <div className="discover-step"><span className="step-number">02</span><span>اختر حلاقًا أو اطلب اقتراحًا</span></div>
+            <i aria-hidden="true" />
+            <div className="discover-step"><span className="step-number">03</span><span>تابع رد الحلاق</span></div>
           </div>
         </section>
-
-        <section id="barbers" aria-labelledby="barbers-heading">
-          <div className="intro-row">
+        <section className="discovery-panel" aria-labelledby="discover-heading">
+          <div className="discovery-heading">
             <div>
-              <div className="section-label">اختيار محلي، خدمة شخصية</div>
-              <h2 id="barbers-heading">حلاقون بالقرب منك</h2>
+              <div className="section-label">ابدأ من التفاصيل</div>
+              <h2 id="discover-heading">من أين نبدأ؟</h2>
             </div>
-            <p>محترفون مستقلون يأتون إليك أينما كنت.</p>
+            <button className="clear-criteria" type="button" onClick={clearCriteria} data-testid="button-clear-filters">إعادة ضبط <X aria-hidden="true" /></button>
           </div>
-          <div className="finder" role="search">
-            <label className="search-control">
+          <div className="criteria-grid">
+            <label className="field">
+              <span>المدينة <b aria-hidden="true">*</b></span>
+              <select value={city} onChange={(event) => { setCity(event.target.value); setArea(''); setServiceName(''); setSuggestionReady(false); }} required aria-label="المدينة" data-testid="select-discover-city">
+                <option value="">اختر المدينة</option>
+                {cities.map((value) => <option key={value} value={value}>{value}</option>)}
+              </select>
+            </label>
+            <label className="field">
+              <span>الحي أو المنطقة {mode === 'suggest' && <b aria-hidden="true">*</b>}</span>
+              <input list="registered-areas" value={area} onChange={(event) => { setArea(event.target.value); setSuggestionReady(false); }} placeholder="مثال: حي النخيل" required={mode === 'suggest'} minLength={2} maxLength={120} aria-label="الحي أو المنطقة" data-testid="input-discover-area" />
+              <datalist id="registered-areas">{[...new Set(cityBarbers.flatMap((barber) => barber.areas))].sort().map((value) => <option key={value} value={value} />)}</datalist>
+            </label>
+            <label className="field">
+              <span>الخدمة المطلوبة <b aria-hidden="true">*</b></span>
+              <select value={serviceName} onChange={(event) => { setServiceName(event.target.value); setSuggestionReady(false); }} required disabled={!city} aria-label="الخدمة المطلوبة" data-testid="select-discover-service">
+                <option value="">اختر الخدمة</option>
+                {services.map((value) => <option key={value} value={value}>{value}</option>)}
+              </select>
+            </label>
+          </div>
+          {mode === 'browse' && (
+            <label className="search-control discover-search-control">
               <Search aria-hidden="true" />
               <input
                 type="search"
@@ -350,65 +436,90 @@ function Home() {
                 data-testid="input-search"
               />
             </label>
-            <label className="search-control">
-              <MapPin aria-hidden="true" />
-              <input
-                type="search"
-                placeholder="المدينة"
-                value={city}
-                onChange={(event) => setCity(event.target.value)}
-                aria-label="فلترة حسب المدينة"
-                data-testid="input-city"
-              />
-            </label>
-            <button
-              className="filter-button"
-              type="button"
-              onClick={() => { setSearchText(''); setCity(''); }}
-              data-testid="button-clear-filters"
-            >
-              مسح البحث <X aria-hidden="true" />
+          )}
+          <div className="mode-switch" role="group" aria-label="طريقة اختيار الحلاق">
+            <button type="button" aria-pressed={mode === 'browse'} className={mode === 'browse' ? 'selected' : ''} onClick={() => { setMode('browse'); setSuggestionReady(false); }} data-testid="button-mode-browse">
+              <Search aria-hidden="true" /><span><strong>أختار بنفسي</strong><small>تصفّح الحلاقين المناسبين</small></span>
+            </button>
+            <button type="button" aria-pressed={mode === 'suggest'} className={mode === 'suggest' ? 'selected' : ''} onClick={() => { setMode('suggest'); setSuggestionReady(false); }} data-testid="button-mode-suggest">
+              <HeartHandshake aria-hidden="true" /><span><strong>اقترح لي حلاقًا</strong><small>ترشيح حسب المنطقة والتقييم</small></span>
             </button>
           </div>
-          <div className="results-meta" dir="rtl">
-            <span><strong>{listQuery.isLoading ? '—' : barbers.length}</strong> حلاق متاح</span>
-            {health.data?.status && <span className="health-state" data-testid="status-api">الخدمة متصلة</span>}
-          </div>
-          {listQuery.isLoading ? (
-            <LoadingCards />
-          ) : listQuery.isError ? (
-            <ErrorMessage onRetry={() => void listQuery.refetch()}>تعذّر تحميل الحلاقين الآن. تحقق من اتصالك ثم أعد المحاولة.</ErrorMessage>
-          ) : barbers.length === 0 ? (
-            <div className="empty-state" dir="rtl" data-testid="status-empty-barbers">
-              <div className="empty-icon"><Scissors aria-hidden="true" /></div>
-              <h3>{city || searchText ? 'لم نجد حلاقًا بهذه المواصفات' : 'لا يوجد حلاقون متاحون بعد'}</h3>
-              <p>{city || searchText ? 'جرّب مدينة أخرى أو كلمات بحث مختلفة، أو امسح عوامل التصفية.' : 'نعمل على إضافة محترفين محليين. إذا كنت حلاقًا متنقلًا، أرسل ملفك للمراجعة.'}</p>
-              {city || searchText ? (
-                <button className="retry-button" onClick={() => { setCity(''); setSearchText(''); }} type="button" data-testid="button-empty-clear">مسح البحث</button>
-              ) : (
-                <Link href="/join" className="retry-button" data-testid="link-empty-join">قدّم ملفك للحلاقة المتنقلة</Link>
-              )}
-            </div>
-          ) : (
-            <div className="barber-grid" data-testid="list-barbers">
-              {barbers.map((barber) => (
-                <BarberCard key={barber.id} barber={barber} onProfile={openProfile} onBook={openBooking} />
-              ))}
+          {mode === 'suggest' && (
+            <div className="suggest-action">
+              <div><strong>ترشيح من بيانات الحلاقين المسجلين</strong><small>نرتّب التغطية المطابقة أولًا، ثم التقييم وعدد المراجعات.</small></div>
+              <button type="button" className="book-button" disabled={!city || !area.trim() || !serviceName} onClick={() => setSuggestionReady(true)} data-testid="button-find-suggestion">
+                اعثر على الأنسب <ArrowLeft aria-hidden="true" />
+              </button>
             </div>
           )}
+          <div className="results-meta discover-results-meta">
+            <span><strong>{listQuery.isLoading ? '—' : (mode === 'suggest' && suggestionReady ? visibleMatches.length : matchingBarbers.length)}</strong> نتيجة مناسبة</span>
+            {city && serviceName && <span className="criteria-caption">{city}{area ? ` · ${area}` : ''} · {serviceName}</span>}
+          </div>
+          {health.data?.status && <span className="health-state" data-testid="status-api">الخدمة متصلة</span>}
+          <p className="coverage-disclaimer" data-testid="text-coverage-disclaimer"><MapPin aria-hidden="true" /> التغطية مبنية على مناطق الخدمة المسجلة لدى الحلاقين، وليست قياسًا للمسافة أو التوفر الفوري.</p>
+          {listQuery.isLoading ? <LoadingCards /> : listQuery.isError ? (
+            <ErrorMessage onRetry={() => void listQuery.refetch()}>تعذّر تحميل الحلاقين الآن. تحقق من اتصالك ثم أعد المحاولة.</ErrorMessage>
+          ) : !city || !serviceName || (mode === 'suggest' && !area.trim()) ? (
+            <div className="discovery-prompt" data-testid="status-discovery-prompt">
+              <div className="empty-icon"><MapPin aria-hidden="true" /></div>
+              <div><h3>ابدأ بالمدينة والخدمة{mode === 'suggest' ? ' والحي' : ''}</h3><p>سنُظهر حلاقين نشطين يقدمون الخدمة نفسها{mode === 'suggest' ? ' ويغطون منطقتك المسجلة' : ''}.</p></div>
+            </div>
+          ) : mode === 'suggest' && !suggestionReady ? (
+            <div className="discovery-prompt compact" data-testid="status-suggestion-ready">
+              <div className="empty-icon"><HeartHandshake aria-hidden="true" /></div>
+              <div><h3>جاهز لاقتراح مناسب</h3><p>سيعتمد الترشيح على نطاق التغطية المسجل ثم التقييم وعدد المراجعات.</p></div>
+            </div>
+          ) : visibleMatches.length === 0 ? (
+            <div className="empty-state discover-empty" data-testid="status-empty-barbers">
+              <div className="empty-icon"><Scissors aria-hidden="true" /></div>
+              <h3>{mode === 'suggest' && suggestionReady && coveredMatches.length === 0 ? 'لا يوجد تطابق في نطاق التغطية' : 'لم نجد حلاقًا بهذه المواصفات'}</h3>
+              <p>{mode === 'suggest' && suggestionReady && coveredMatches.length === 0
+                ? `لا يوجد حلاق نشط مسجل لتغطية «${area}» ويقدم «${serviceName}». جرّب اختيار حلاق بنفسك أو غيّر المنطقة.`
+                : `لا يوجد حلاق نشط في ${city} يقدم خدمة «${serviceName}» حاليًا. جرّب خدمة أو مدينة أخرى.`}</p>
+              <button className="retry-button" onClick={clearCriteria} type="button" data-testid="button-empty-clear">تغيير التفاصيل</button>
+            </div>
+          ) : (
+            <>
+              {mode === 'suggest' && suggestionReady && (
+                <div className="suggestion-note" data-testid="status-suggestion-result"><Check aria-hidden="true" /> هذا الترشيح مبني على بيانات نطاق الخدمة والتقييم، وليس على موقع GPS أو التوفر الفوري.</div>
+              )}
+              {mode === 'browse' && area.trim() && coveredMatches.length === 0 && (
+                <div className="status-banner area-warning" role="status" data-testid="status-no-area-coverage">
+                  <MapPin aria-hidden="true" /> لا يوجد تطابق مسجل لهذا الحي تحديدًا. الخيارات أدناه تقدم الخدمة في مدينتك؛ يُرجى التأكد من التغطية قبل إرسال الطلب.
+                </div>
+              )}
+              <div className="barber-grid" data-testid="list-barbers">
+                {visibleMatches.map(({ barber, service }) => (
+                  <BarberCard
+                    key={barber.id}
+                    barber={barber}
+                    service={service}
+                    covered={areaIsCovered(barber)}
+                    showCoverage={Boolean(area.trim())}
+                    onProfile={openProfile}
+                    onBook={openBooking}
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </section>
-
         <section className="trust-strip" aria-label="مزايا الخدمة" dir="rtl">
           <div className="trust-copy"><ShieldCheck aria-hidden="true" /> ملفات الحلاقين تُراجع قبل ظهورها</div>
           <div className="trust-stats">
-            <span><strong>حجز مباشر</strong> بلا خطوات زائدة</span>
-            <span><strong>في مكانك</strong> حسب نطاق التغطية</span>
+            <span><strong>طلب مباشر</strong> والحلاق يؤكد الموعد</span>
+            <span><strong>نطاق واضح</strong> حسب مناطق التغطية</span>
           </div>
         </section>
-        <footer className="footer" dir="rtl">
+        <footer className="footer discover-footer" dir="rtl">
           <div className="footer-brand"><span className="brand-mark"><Scissors aria-hidden="true" /></span> BarberLink</div>
-          <span>حلاقة مريحة، من أهل منطقتك.</span>
-          <Link href="/join" data-testid="link-footer-join">هل أنت حلاق متنقل؟ انضم إلينا</Link>
+          <span>كل طلب ينتظر رد الحلاق قبل أن يصبح موعدًا مؤكدًا.</span>
+          <span className="discover-footer-links">
+            <Link href="/my-bookings" data-testid="link-discover-bookings">متابعة طلباتي</Link>
+            <Link href="/join" data-testid="link-footer-join">هل أنت حلاق متنقل؟ انضم إلينا</Link>
+          </span>
         </footer>
       </main>
       {modalMode && activeBarberId !== null && (
@@ -420,6 +531,8 @@ function Home() {
           onRetry={() => void barberQuery.refetch()}
           onClose={closeModal}
           onBook={() => setModalMode('booking')}
+          selectedServiceId={activeServiceId}
+          initialArea={area}
         />
       )}
     </div>
@@ -434,6 +547,8 @@ function BarberModal({
   onRetry,
   onClose,
   onBook,
+  selectedServiceId,
+  initialArea,
 }: {
   mode: 'profile' | 'booking';
   barber?: Barber;
@@ -442,6 +557,8 @@ function BarberModal({
   onRetry: () => void;
   onClose: () => void;
   onBook: () => void;
+  selectedServiceId: string;
+  initialArea: string;
 }) {
   const [confirmation, setConfirmation] = useState<{
     id: number;
@@ -460,6 +577,7 @@ function BarberModal({
   const whatsappMessage = confirmation
     ? `مرحبًا ${confirmation.barberName}، أرسلت طلب الموعد رقم ${confirmation.id}.\nالخدمة: ${confirmation.serviceName}\nالتاريخ: ${dateLabel(confirmation.date)} الساعة ${confirmation.time}\nالاسم: ${contactDetails?.name ?? ''}\nهاتف التواصل: ${contactDetails?.phone ?? ''}\nالمنطقة: ${contactDetails?.area ?? ''}\nأرجو تأكيد الموعد.`
     : '';
+  const requestedService = barber?.services.find((service) => service.id === selectedServiceId) ?? barber?.services[0];
   const saveTrackingReference = (bookingId: number, token: string) => {
     const stored = readCustomerBookings();
     const updated = [{ id: bookingId, token }, ...stored.filter((item) => item.id !== bookingId)];
@@ -472,7 +590,7 @@ function BarberModal({
     const form = new FormData(event.currentTarget);
     const payload: BookingInput = {
       barberId: barber.id,
-      serviceId: String(form.get('serviceId') || ''),
+      serviceId: requestedService?.id ?? '',
       customerName: String(form.get('customerName') || '').trim(),
       customerPhone: String(form.get('customerPhone') || '').trim(),
       area: String(form.get('area') || '').trim(),
@@ -480,6 +598,10 @@ function BarberModal({
       time: String(form.get('time') || ''),
       note: String(form.get('note') || '').trim() || null,
     };
+    if (!payload.serviceId || !payload.area) {
+      setFormError('يرجى اختيار خدمة ومنطقة صالحتين قبل إرسال الطلب.');
+      return;
+    }
     setContactDetails({
       name: payload.customerName,
       phone: payload.customerPhone,
@@ -565,16 +687,11 @@ function BarberModal({
             <h2>اطلب موعدًا مع {barber.name}</h2>
             <p>أرسل طلبك، وسيتواصل معك الحلاق لتأكيد الموعد.</p>
             <div className="booking-summary" data-testid="booking-summary">
-              <span><strong>{barber.name}</strong> · {barber.city}</span>
-              <span>تنقل {money(barber.travelFee, barber.currency)}</span>
+              <span><strong>{barber.name}</strong> · {barber.city}<small>{requestedService?.name ?? 'الخدمة'} · {requestedService?.durationMinutes ?? 0} دقيقة</small></span>
+              <span className="booking-price">{requestedService ? money(requestedService.price, barber.currency) : '—'}<small>رسوم التنقل {money(barber.travelFee, barber.currency)}</small></span>
             </div>
             {formError && <div className="status-banner error" role="alert"><AlertCircle />{formError}</div>}
-            <div className="field">
-              <label htmlFor="booking-service">الخدمة</label>
-              <select id="booking-service" name="serviceId" required data-testid="select-booking-service">
-                {barber.services.map((service) => <option key={service.id} value={service.id}>{service.name} · {service.durationMinutes} دقيقة · {money(service.price, barber.currency)}</option>)}
-              </select>
-            </div>
+            <input type="hidden" name="serviceId" value={requestedService?.id ?? ''} />
             <div className="form-grid">
               <div className="field">
                 <label htmlFor="booking-name">الاسم</label>
@@ -587,7 +704,7 @@ function BarberModal({
             </div>
             <div className="field">
               <label htmlFor="booking-area">الحي أو المنطقة</label>
-              <input id="booking-area" name="area" required minLength={2} maxLength={120} placeholder="أين ترغب باستقبال الحلاق؟" data-testid="input-booking-area" />
+                <input id="booking-area" name="area" required minLength={2} maxLength={120} defaultValue={initialArea} placeholder="أين ترغب باستقبال الحلاق؟" data-testid="input-booking-area" />
             </div>
             <div className="form-grid">
               <div className="field">
@@ -603,6 +720,10 @@ function BarberModal({
               <label htmlFor="booking-note">ملاحظة للحلاق <span style={{ fontWeight: 400 }}>(اختياري)</span></label>
               <textarea id="booking-note" name="note" maxLength={500} placeholder="تفاصيل تساعد الحلاق على الاستعداد" data-testid="input-booking-note" />
             </div>
+              <div className="payment-preparation" data-testid="status-payment-preparation">
+                <CreditCard aria-hidden="true" />
+                <span>ستُضاف خطوة الدفع الإلكتروني قبل إرسال الطلب بعد ربط بوابة الدفع. لا يتم تحصيل أي مبلغ الآن.</span>
+              </div>
             <button className="submit-button" type="submit" disabled={booking.isPending} data-testid="button-submit-booking">
               {booking.isPending ? 'جارٍ إرسال الطلب…' : <>إرسال طلب الموعد <ArrowLeft aria-hidden="true" /></>}
             </button>

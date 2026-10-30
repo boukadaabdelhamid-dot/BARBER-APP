@@ -1,1 +1,2 @@
 - [Orval parameter naming](orval-param-naming.md) — Mixed path and query parameters can generate duplicate `<OperationId>Params` exports.
+- [BarberLink business model](barberlink-business-model.md) — Start free, later take a percentage per booking; WhatsApp is the support channel.

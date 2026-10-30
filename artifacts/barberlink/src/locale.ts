@@ -1,4 +1,5 @@
-import { createElement, useEffect, useState } from 'react';
+import { createElement, useEffect, useRef, useState } from 'react';
+import { Check, ChevronDown, Languages } from 'lucide-react';
 
 export type Locale = 'ar' | 'fr';
 const STORAGE_KEY = 'barberlink-locale';
@@ -226,6 +227,10 @@ function translateAttribute(source: string, attribute: string, locale: Locale) {
 
 export function LanguageControl() {
   const { locale, setLocale } = useLocale();
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+
   useEffect(() => {
     const apply = () => localizeDom(document.body, locale);
     document.documentElement.lang = locale === 'ar' ? 'ar' : 'fr';
@@ -235,11 +240,70 @@ export function LanguageControl() {
     observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['aria-label', 'aria-description', 'title', 'placeholder', 'alt'] });
     return () => observer.disconnect();
   }, [locale]);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !rootRef.current?.contains(event.target)) setOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', closeOutside);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOutside);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [open]);
+
+  const choose = (next: Locale) => {
+    setLocale(next);
+    setOpen(false);
+    triggerRef.current?.focus();
+  };
+
   return createElement('div', {
     className: 'locale-switch',
-    role: 'group',
-    'aria-label': locale === 'ar' ? 'تغيير اللغة' : 'Changer de langue',
+    ref: rootRef,
   },
-  createElement('button', { type: 'button', onClick: () => setLocale('ar'), 'aria-pressed': locale === 'ar', 'data-testid': 'button-language-ar' }, 'العربية'),
-  createElement('button', { type: 'button', onClick: () => setLocale('fr'), 'aria-pressed': locale === 'fr', 'data-testid': 'button-language-fr' }, 'Français'));
+  createElement('button', {
+    ref: triggerRef,
+    type: 'button',
+    className: 'locale-trigger',
+    'aria-label': locale === 'ar' ? 'تغيير اللغة' : 'Changer de langue',
+    title: locale === 'ar' ? 'تغيير اللغة' : 'Changer de langue',
+    'aria-haspopup': 'menu',
+    'aria-expanded': open,
+    'aria-controls': 'barberlink-locale-menu',
+    'data-testid': 'button-language-menu',
+    onClick: () => setOpen((current) => !current),
+  },
+  createElement(Languages, { size: 18, 'aria-hidden': true }),
+  createElement(ChevronDown, { size: 12, 'aria-hidden': true })),
+  open ? createElement('div', {
+    id: 'barberlink-locale-menu',
+    className: 'locale-menu',
+    role: 'group',
+    'aria-label': locale === 'ar' ? 'اختر اللغة' : 'Choisir une langue',
+  },
+  createElement('button', {
+    type: 'button',
+    'aria-pressed': locale === 'ar',
+    'data-testid': 'button-language-ar',
+    onClick: () => choose('ar'),
+  },
+  createElement('span', { lang: 'ar', dir: 'rtl' }, 'العربية'),
+  locale === 'ar' ? createElement(Check, { size: 14, 'aria-hidden': true }) : null),
+  createElement('button', {
+    type: 'button',
+    'aria-pressed': locale === 'fr',
+    'data-testid': 'button-language-fr',
+    onClick: () => choose('fr'),
+  },
+  createElement('span', { lang: 'fr', dir: 'ltr' }, 'Français'),
+  locale === 'fr' ? createElement(Check, { size: 14, 'aria-hidden': true }) : null)) : null);
 }

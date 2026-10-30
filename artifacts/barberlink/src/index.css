@@ -381,33 +381,83 @@ body { min-width: 320px; }
   *,*::before,*::after { animation-duration:.01ms!important;scroll-behavior:auto!important;transition-duration:.01ms!important; }
 }
 
-/* Persistent, compact language control; logical positioning follows the active locale. */
+/* Persistent language menu anchored to the app's top bar. */
 .locale-switch {
   position: fixed;
-  z-index: 80;
-  inset-block-start: 12px;
+  z-index: 100;
+  inset-block-start: 18px;
   inset-inline-end: 14px;
-  display: inline-flex;
-  gap: 2px;
-  padding: 3px;
-  border: 1px solid #cbd7c9;
-  border-radius: 9px;
-  background: rgba(250, 249, 243, .96);
-  box-shadow: 0 5px 18px rgba(36, 62, 50, .12);
-  direction: ltr;
 }
-.locale-switch button {
-  min-height: 30px;
-  padding: 5px 9px;
+.locale-trigger {
+  width: 44px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 1px solid #cbd7c9;
+  border-radius: 11px;
+  background: rgba(250, 249, 243, .97);
+  color: #28584c;
+  box-shadow: 0 5px 18px rgba(36, 62, 50, .12);
+  cursor: pointer;
+  direction: ltr;
+  transition: background .16s ease, border-color .16s ease, transform .16s ease;
+}
+.locale-trigger:hover {
+  transform: translateY(-1px);
+  border-color: #92aa98;
+  background: #f3f6ef;
+}
+.locale-trigger:focus-visible,
+.locale-menu button:focus-visible {
+  outline: 3px solid rgba(40, 88, 76, .3);
+  outline-offset: 2px;
+}
+.locale-menu {
+  width: 168px;
+  position: absolute;
+  inset-block-start: calc(100% + 8px);
+  inset-inline-end: 0;
+  z-index: 101;
+  padding: 5px;
+  border: 1px solid #d9ded4;
+  border-radius: 12px;
+  background: #fcfbf7;
+  box-shadow: 0 14px 32px rgba(32, 56, 58, .16);
+  animation: locale-menu-in .14s ease-out both;
+}
+.locale-menu button {
+  width: 100%;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 8px;
   background: transparent;
-  color: #52665b;
-  font-size: 11px;
+  color: #20383a;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.locale-menu button:hover,
+.locale-menu button[aria-pressed="true"] {
+  background: #edf2e9;
+}
+.locale-menu button[aria-pressed="true"] {
+  color: #28584c;
   font-weight: 700;
 }
-.locale-switch button[aria-pressed="true"] { background: #28584c; color: #f7f3e9; }
-.locale-switch button:focus-visible { outline: 2px solid #a76a4d; outline-offset: 2px; }
+.locale-menu [lang="ar"] { direction: rtl; }
+.locale-menu [lang="fr"] { direction: ltr; }
+.locale-menu svg { flex: none; color: #28584c; }
+@keyframes locale-menu-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 /* Entry gate is intentionally bilingual so it is understandable before a locale is chosen. */
 .locale-gate {
   min-height: 100dvh;
@@ -473,9 +523,9 @@ html[dir="ltr"] .payment-country-copy span { text-align: left; }
 html[dir="ltr"] .modal-close { right: auto; left: 16px; }
 html[dir="ltr"] .availability { left: auto; right: 13px; }
 @media(max-width:680px) {
-  .locale-switch { inset-block-start: 9px; inset-inline-end: 12px; }
-  .welcome-header { padding-inline-end: 132px; }
-  .topbar { padding-inline-end: 132px; }
+  .locale-switch { inset-block-start: 13px; inset-inline-end: 12px; }
+  .welcome-header { padding-inline-end: 64px; }
+  .topbar { padding-inline-end: 64px; }
   .locale-gate { padding: 18px; }
   .locale-gate-panel { padding: 30px 22px; }
 }
@@ -747,7 +797,7 @@ html[dir="ltr"] .availability { left: auto; right: 13px; }
 .review-skeleton i:nth-child(3) { width:37%; }
 .mobile-break { display:none; }
 @media(max-width:760px) {
-  .admin-topbar { height:68px;padding:0 20px; }
+  .admin-topbar { height:68px;padding:0 20px;padding-inline-end:64px; }
   .admin-topbar .brand { font-size:19px; }
   .admin-team { display:none; }
   .admin-main { width:min(100% - 36px,620px);padding:34px 0 35px; }

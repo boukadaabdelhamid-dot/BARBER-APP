@@ -391,6 +391,64 @@ body { min-width: 320px; }
 }
 .locale-switch button[aria-pressed="true"] { background: #28584c; color: #f7f3e9; }
 .locale-switch button:focus-visible { outline: 2px solid #a76a4d; outline-offset: 2px; }
+/* Entry gate is intentionally bilingual so it is understandable before a locale is chosen. */
+.locale-gate {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: radial-gradient(ellipse at 50% 0%, #e5ece2 0, transparent 48%), #f5f2e9;
+}
+.locale-gate-panel {
+  width: min(100%, 450px);
+  padding: 38px;
+  border: 1px solid #e1ded4;
+  border-radius: 18px;
+  background: rgba(252, 251, 247, .95);
+  box-shadow: 0 24px 60px -42px rgba(32, 56, 58, .42);
+  text-align: center;
+  animation: rise-in .28s ease-out both;
+}
+.locale-gate-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #20383a;
+  font: 800 22px 'Manrope', sans-serif;
+  letter-spacing: -1px;
+}
+.locale-gate-guidance {
+  display: grid;
+  gap: 7px;
+  margin: 25px 0 22px;
+  color: #64736b;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.locale-gate [lang="ar"] { direction: rtl; }
+.locale-gate [lang="fr"] { direction: ltr; }
+.locale-gate-options { display: grid; gap: 11px; }
+.locale-gate-option {
+  width: 100%;
+  min-height: 75px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid #d9ded4;
+  border-radius: 10px;
+  background: #f8f7f1;
+  color: #28483d;
+  font-size: 17px;
+  font-weight: 700;
+  transition: border-color .18s, background .18s, transform .18s;
+}
+.locale-gate-option:hover { transform: translateY(-1px); border-color: #7e9e8c; }
+.locale-gate-option.selected { border-color: #28584c; background: #e8eee5; }
+.locale-gate-option small { color: #758078; font-size: 11px; font-weight: 500; }
+.locale-gate-option:focus-visible { outline: 3px solid rgba(40, 88, 76, .3); outline-offset: 3px; }
 html[dir="ltr"] .welcome-options,
 html[dir="ltr"] .welcome-option { text-align: left; }
 html[dir="ltr"] .confirmation-details { text-align: left; }
@@ -401,6 +459,8 @@ html[dir="ltr"] .availability { left: auto; right: 13px; }
   .locale-switch { inset-block-start: 9px; inset-inline-end: 12px; }
   .welcome-header { padding-inline-end: 132px; }
   .topbar { padding-inline-end: 132px; }
+  .locale-gate { padding: 18px; }
+  .locale-gate-panel { padding: 30px 22px; }
 }
 
 /* Country-aware payment preparation */

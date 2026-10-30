@@ -1963,19 +1963,58 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
   return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>;
 }
 
+function LanguageEntryGate({
+  locale,
+  onChoose,
+}: {
+  locale: 'ar' | 'fr';
+  onChoose: (locale: 'ar' | 'fr') => void;
+}) {
+  return (
+    <main className="locale-gate" aria-labelledby="locale-gate-title">
+      <section className="locale-gate-panel">
+        <div className="locale-gate-brand"><span className="brand-mark"><Scissors aria-hidden="true" /></span> BarberLink</div>
+        <p className="locale-gate-guidance" id="locale-gate-title">
+          <span lang="fr">Choisissez votre langue pour continuer.</span>
+          <span lang="ar">اختر لغتك للمتابعة.</span>
+        </p>
+        <div className="locale-gate-options" role="group" aria-labelledby="locale-gate-title">
+          <button type="button" className={locale === 'ar' ? 'locale-gate-option selected' : 'locale-gate-option'} onClick={() => onChoose('ar')} aria-pressed={locale === 'ar'} data-testid="button-entry-arabic">
+            <span lang="ar">العربية</span>
+            <small lang="fr">Continuer en arabe</small>
+          </button>
+          <button type="button" className={locale === 'fr' ? 'locale-gate-option selected' : 'locale-gate-option'} onClick={() => onChoose('fr')} aria-pressed={locale === 'fr'} data-testid="button-entry-french">
+            <span lang="fr">Français</span>
+            <small lang="ar">المتابعة بالفرنسية</small>
+          </button>
+        </div>
+      </section>
+    </main>
+  );
+}
+
 function App() {
-  const { locale } = useLocale();
+  const { locale, setLocale } = useLocale();
+  const [hasEntered, setHasEntered] = useState(false);
+  useEffect(() => {
+    document.documentElement.lang = locale === 'ar' ? 'ar' : 'fr';
+    document.documentElement.dir = locale === 'ar' ? 'rtl' : 'ltr';
+  }, [locale]);
   return (
     <div className="app-locale-root" data-locale={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-      <QueryClientProvider client={queryClient}>
-        <LanguageControl />
-        <TooltipProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-            <Router />
-          </WouterRouter>
-          <Toaster />
-        </TooltipProvider>
-      </QueryClientProvider>
+      {!hasEntered ? (
+        <LanguageEntryGate locale={locale} onChoose={(nextLocale) => { setLocale(nextLocale); setHasEntered(true); }} />
+      ) : (
+        <QueryClientProvider client={queryClient}>
+          <LanguageControl />
+          <TooltipProvider>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+              <Router />
+            </WouterRouter>
+            <Toaster />
+          </TooltipProvider>
+        </QueryClientProvider>
+      )}
     </div>
   );
 }

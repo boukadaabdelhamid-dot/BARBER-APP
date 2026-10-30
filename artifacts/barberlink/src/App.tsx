@@ -18,6 +18,10 @@ import {
   useLoginAdmin,
   useLoginBarber,
   useLoginBarberByEmail,
+  useLoginBarberWithGoogle,
+  useLoginCustomerWithGoogle,
+  useGetCustomerSession,
+  useLogoutCustomer,
   useRecoverBarberPassword,
   useIssueBarberAccessCode,
   useLogoutAdmin,
@@ -26,6 +30,7 @@ import {
   useHealthCheck,
   getGetBarberQueryKey,
   getGetBarberSessionQueryKey,
+  getGetCustomerSessionQueryKey,
   getGetBookingStatusQueryKey,
   getGetAdminSessionQueryKey,
   getListBarbersQueryKey,
@@ -74,6 +79,7 @@ import {
 setBaseUrl(import.meta.env.VITE_API_BASE_URL || null);
 import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { GoogleAuthButton } from '@/components/google-auth-button';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
@@ -90,6 +96,23 @@ function money(amount: number, currency: string) {
     }).format(amount);
   } catch {
     return `${currency || ''} ${amount}`;
+  }
+}
+
+function readGoogleProfile(credential: string): { name: string; email: string } | null {
+  try {
+    const encoded = credential.split('.')[1];
+    if (!encoded) return null;
+    const base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+    const payload = JSON.parse(atob(padded)) as { name?: string; email?: string };
+    if (!payload.email) return null;
+    return {
+      name: payload.name?.trim() || payload.email,
+      email: payload.email.trim().toLowerCase(),
+    };
+  } catch {
+    return null;
   }
 }
 
@@ -627,16 +650,54 @@ function BarberModal({
     attemptCount: number;
   } | null>(null);
   const booking = useCreateBooking();
+  const customerSession = useGetCustomerSession({
+    query: {
+      queryKey: getGetCustomerSessionQueryKey(),
+      enabled: mode === 'booking',
+      retry: false,
+      staleTime: 0,
+    },
+  });
+  const customerGoogleLogin = useLoginCustomerWithGoogle();
+  const customerLogout = useLogoutCustomer();
   const countriesQuery = useListPaymentCountries({
     query: { queryKey: getListPaymentCountriesQueryKey(), staleTime: 60_000 },
   });
   const [formError, setFormError] = useState('');
+  const [googleCustomerError, setGoogleCustomerError] = useState('');
+  const [customerName, setCustomerName] = useState('');
   const [locationMode, setLocationMode] = useState<'manual' | 'gps'>('manual');
   const [coordinates, setCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationError, setLocationError] = useState('');
   const [contactDetails, setContactDetails] = useState<{ name: string; phone: string; area: string } | null>(null);
   const dateInput = useRef<HTMLInputElement>(null);
   const minDate = new Date().toLocaleDateString('en-CA');
+  useEffect(() => {
+    if (customerSession.data?.authenticated && customerSession.data.customerName) {
+      setCustomerName(customerSession.data.customerName);
+    }
+  }, [customerSession.data?.authenticated, customerSession.data?.customerName]);
+
+  const signInCustomerWithGoogle = (credential: string) => {
+    setGoogleCustomerError('');
+    customerGoogleLogin.mutate({ data: { credential } }, {
+      onSuccess: (customer) => {
+        setCustomerName(customer.customerName ?? '');
+        void customerSession.refetch();
+      },
+      onError: () => setGoogleCustomerError('تعذّر تسجيل الدخول عبر Google. حاول مرة أخرى.'),
+    });
+  };
+
+  const signOutCustomer = () => {
+    customerLogout.mutate(undefined, {
+      onSuccess: () => {
+        setCustomerName('');
+        void customerSession.refetch();
+      },
+      onError: () => setGoogleCustomerError('لم يتم تسجيل الخروج. يرجى المحاولة مرة أخرى.'),
+    });
+  };
   const whatsappPhone = confirmation?.barberPhone.replace(/\D/g, '') ?? '';
   const whatsappMessage = confirmation
     ? getLocale() === 'ar'
@@ -801,11 +862,32 @@ function BarberModal({
               <span className="booking-price">السعر يحدده الحلاق المتاح<small>يظهر السعر قبل تأكيد الموعد</small></span>
             </div>
             {formError && <div className="status-banner error" role="alert"><AlertCircle />{formError}</div>}
+            <section className="customer-google-panel" aria-label="تسجيل العميل الاختياري">
+              {customerSession.data?.authenticated ? (
+                <div className="customer-google-signed-in" data-testid="status-customer-google-signed-in">
+                  <span><strong>تم الدخول باستخدام Google</strong><small>{customerSession.data.email}</small></span>
+                  <button type="button" onClick={signOutCustomer} disabled={customerLogout.isPending} data-testid="button-customer-google-logout">
+                    {customerLogout.isPending ? 'جارٍ الخروج…' : 'المتابعة كضيف'}
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <p>Google اختياري للعميل؛ يمكنك متابعة الحجز كضيف.</p>
+                  <GoogleAuthButton
+                    testId="button-customer-google-login"
+                    onCredential={signInCustomerWithGoogle}
+                    onError={() => setGoogleCustomerError('تعذّر تسجيل الدخول عبر Google. حاول مرة أخرى.')}
+                  />
+                  <small>أو تابع الحجز كضيف دون إنشاء حساب</small>
+                </>
+              )}
+              {googleCustomerError && <small className="google-auth-error" role="alert" data-testid="status-customer-google-error">{googleCustomerError}</small>}
+            </section>
             <input type="hidden" name="serviceId" value={requestedService?.id ?? ''} />
             <div className="form-grid">
               <div className="field">
                 <label htmlFor="booking-name">الاسم</label>
-                <input id="booking-name" name="customerName" required minLength={2} maxLength={100} placeholder="اسمك الكامل" data-testid="input-customer-name" />
+                <input id="booking-name" name="customerName" value={customerName} onChange={(event) => setCustomerName(event.target.value)} required minLength={2} maxLength={100} placeholder="اسمك الكامل" data-testid="input-customer-name" />
               </div>
               <div className="field">
                 <label htmlFor="booking-phone">رقم الهاتف</label>
@@ -893,7 +975,10 @@ function Join() {
   const [services, setServices] = useState<ServiceDraft[]>([{ name: '', durationMinutes: '30', price: '' }]);
   const serviceCounter = useRef(1);
   const [formError, setFormError] = useState('');
-  const [success, setSuccess] = useState<{ id: number; message: string; accessCode: string } | null>(null);
+  const [googleCredential, setGoogleCredential] = useState('');
+  const [profileName, setProfileName] = useState('');
+  const [profileEmail, setProfileEmail] = useState('');
+  const [success, setSuccess] = useState<{ id: number; message: string; accessCode: string; googleAuth: boolean } | null>(null);
 
   const updateService = (index: number, field: keyof ServiceDraft, value: string) => {
     setServices((current) => current.map((service, currentIndex) => currentIndex === index ? { ...service, [field]: value } : service));
@@ -908,7 +993,7 @@ function Join() {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const password = String(form.get('password') || '');
-    if (password !== String(form.get('passwordConfirm') || '')) {
+    if (!googleCredential && password !== String(form.get('passwordConfirm') || '')) {
       setFormError('كلمتا المرور غير متطابقتين.');
       return;
     }
@@ -926,14 +1011,19 @@ function Join() {
       bio: String(form.get('bio') || '').trim(),
       phone: String(form.get('phone') || '').trim(),
       email: String(form.get('email') || '').trim().toLowerCase(),
-      password,
+      ...(googleCredential ? { googleCredential } : { password }),
       travelFee: Number(form.get('travelFee') || 0),
       currency: selectedCountry?.currency ?? '',
       services: serviceInputs,
     };
     setFormError('');
     createBarber.mutate({ data: payload }, {
-      onSuccess: (result) => setSuccess({ id: result.id, message: result.message, accessCode: result.accessCode }),
+      onSuccess: (result) => setSuccess({
+        id: result.id,
+        message: result.message,
+        accessCode: result.accessCode,
+        googleAuth: Boolean(googleCredential),
+      }),
       onError: () => setFormError('تعذّر إرسال الملف. تحقق من الحقول، وتأكد أن البريد غير مسجل من قبل.'),
     });
   };
@@ -952,12 +1042,12 @@ function Join() {
             <div className="success-mark"><Check aria-hidden="true" /></div>
             <div className="eyebrow">استلمنا ملفك</div>
             <h2>خطوتك التالية وصلت إلينا</h2>
-            <p>شكرًا لانضمامك. سيراجع فريقنا معلوماتك قبل إظهار ملفك للعملاء.</p>
+              <p>شكرًا لانضمامك. سيراجع فريقنا معلوماتك قبل إظهار ملفك للعملاء. {success.googleAuth ? 'استخدم Google في المرات القادمة للدخول.' : ''}</p>
             <div className="confirmation-details">رقم الطلب: <strong>#{success.id}</strong><br />الحالة: <strong>قيد المراجعة</strong></div>
             <div className="access-code-panel">
               <strong>رمز دخولك إلى لوحة الحلاق</strong>
               <code>{success.accessCode}</code>
-              <p>استخدم بريدك وكلمة المرور للدخول. احتفظ برقم الملف والرمز الاحتياطي؛ لن نعرض الرمز مرة أخرى، وستحتاج إليه إذا نسيت كلمة المرور.</p>
+              <p>{success.googleAuth ? 'استخدم حساب Google المرتبط للدخول.' : 'استخدم بريدك وكلمة المرور للدخول.'} احتفظ برقم الملف والرمز الاحتياطي؛ لن نعرض الرمز مرة أخرى، وستحتاج إليه إذا نسيت كلمة المرور.</p>
               <button
                 type="button"
                 className="admin-secondary-button"
@@ -981,10 +1071,34 @@ function Join() {
             <form className="form-panel" onSubmit={submitProfile} data-testid="form-join">
               <h2 className="form-section-title">معلومات ملفك</h2>
               {formError && <div className="status-banner error" role="alert" style={{ marginBottom: 18 }}><AlertCircle />{formError}</div>}
+              <div className="barber-google-signup">
+                <p>استخدم Google أو أنشئ ملفك بكلمة مرور.</p>
+                <GoogleAuthButton
+                  testId="button-barber-google-signup"
+                  onCredential={(credential) => {
+                    setGoogleCredential(credential);
+                    setFormError('');
+                    const profile = readGoogleProfile(credential);
+                    if (profile) {
+                      setProfileName(profile.name);
+                      setProfileEmail(profile.email);
+                    }
+                  }}
+                  onError={() => setFormError('تعذّر تسجيل الدخول عبر Google. حاول مرة أخرى.')}
+                />
+                {googleCredential && (
+                  <div className="google-auth-selected" role="status" data-testid="status-barber-google-selected">
+                    <span>تم التحقق من حساب Google</span>
+                    <button type="button" onClick={() => setGoogleCredential('')} data-testid="button-cancel-google-signup">
+                      إلغاء اختيار Google
+                    </button>
+                  </div>
+                )}
+              </div>
               <div className="form-grid">
                 <div className="field">
                   <label htmlFor="barber-name">الاسم الذي يعرفك به العملاء</label>
-                  <input id="barber-name" name="name" required minLength={2} maxLength={100} placeholder="الاسم الكامل" data-testid="input-barber-name" />
+                  <input id="barber-name" name="name" value={profileName} onChange={(event) => setProfileName(event.target.value)} required minLength={2} maxLength={100} placeholder="الاسم الكامل" data-testid="input-barber-name" />
                 </div>
                 <div className="field">
                   <label htmlFor="barber-country">الدولة</label>
@@ -1014,17 +1128,21 @@ function Join() {
               <div className="form-grid">
                 <div className="field">
                   <label htmlFor="barber-email">البريد الإلكتروني للدخول</label>
-                  <input id="barber-email" name="email" type="email" required maxLength={254} autoComplete="email" placeholder="name@example.com" data-testid="input-barber-email" />
-                </div>
-                <div className="field">
-                  <label htmlFor="barber-password">كلمة المرور</label>
-                  <input id="barber-password" name="password" type="password" required minLength={12} maxLength={128} autoComplete="new-password" placeholder="12 حرفًا على الأقل" data-testid="input-barber-password" />
+                  <input id="barber-email" name="email" type="email" value={profileEmail} onChange={(event) => setProfileEmail(event.target.value)} readOnly={Boolean(googleCredential)} required maxLength={254} autoComplete="email" placeholder="name@example.com" data-testid="input-barber-email" />
                 </div>
               </div>
-              <div className="field">
-                <label htmlFor="barber-password-confirm">تأكيد كلمة المرور</label>
-                <input id="barber-password-confirm" name="passwordConfirm" type="password" required minLength={12} maxLength={128} autoComplete="new-password" placeholder="أعد كتابة كلمة المرور" data-testid="input-barber-password-confirm" />
-              </div>
+              {!googleCredential && (
+                <>
+                  <div className="field" style={{ maxWidth: 520 }}>
+                    <label htmlFor="barber-password">كلمة المرور</label>
+                    <input id="barber-password" name="password" type="password" required minLength={12} maxLength={128} autoComplete="new-password" placeholder="12 حرفًا على الأقل" data-testid="input-barber-password" />
+                  </div>
+                  <div className="field" style={{ maxWidth: 520 }}>
+                    <label htmlFor="barber-password-confirm">تأكيد كلمة المرور</label>
+                    <input id="barber-password-confirm" name="passwordConfirm" type="password" required minLength={12} maxLength={128} autoComplete="new-password" placeholder="أعد كتابة كلمة المرور" data-testid="input-barber-password-confirm" />
+                  </div>
+                </>
+              )}
               <div className="small-print" style={{ margin: '-4px 0 17px' }}>لا نرسل رسالة تحقق حاليًا؛ تأكد من صحة البريد واحفظ رمز الاسترداد الظاهر بعد التسجيل.</div>
               <div className="field">
                 <label htmlFor="barber-areas">الأحياء أو المناطق التي تغطيها</label>
@@ -1598,6 +1716,7 @@ function BarberPortal() {
   });
   const login = useLoginBarber();
   const emailLogin = useLoginBarberByEmail();
+  const googleLogin = useLoginBarberWithGoogle();
   const recoverPassword = useRecoverBarberPassword();
   const logout = useLogoutBarber();
   const decideBooking = useDecideBarberBooking();
@@ -1628,6 +1747,21 @@ function BarberPortal() {
     }, {
       onSuccess: refreshBarberSession,
       onError: () => setLoginError('البريد الإلكتروني أو كلمة المرور غير صحيحة.'),
+    });
+  };
+
+  const submitGoogleLogin = (credential: string) => {
+    setLoginError('');
+    googleLogin.mutate({ data: { credential } }, {
+      onSuccess: refreshBarberSession,
+      onError: (error) => {
+        const status = (error as { status?: number }).status;
+        setLoginError(
+          status === 404
+            ? 'لم نعثر على ملف حلاق بهذا البريد. أنشئ ملفك أولًا.'
+            : 'تعذّر تسجيل الدخول عبر Google. حاول مرة أخرى.',
+        );
+      },
     });
   };
 
@@ -1773,6 +1907,18 @@ function BarberPortal() {
                     {emailLogin.isPending ? 'جارٍ التحقق…' : <>دخول إلى الطلبات <ArrowLeft size={17} /></>}
                   </button>
                 </form>
+                <div className="barber-google-login">
+                  <p>تسجيل الدخول عبر Google</p>
+                  <GoogleAuthButton
+                    testId="button-barber-google-login"
+                    onCredential={submitGoogleLogin}
+                    onError={() => setLoginError('تعذّر تسجيل الدخول عبر Google. حاول مرة أخرى.')}
+                  />
+                  {googleLogin.isPending && <small role="status">جارٍ تسجيل الدخول…</small>}
+                  <Link href="/join" className="barber-login-link" data-testid="link-barber-google-signup">
+                    إنشاء ملف حلاق جديد
+                  </Link>
+                </div>
                 <button className="barber-login-link" type="button" onClick={() => { setLoginMode('recover'); setLoginError(''); setRecoveryResult(null); }}>
                   نسيت كلمة المرور أو تريد تفعيل بريد لحساب قديم؟
                 </button>

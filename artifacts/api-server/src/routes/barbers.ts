@@ -15,6 +15,11 @@ import { db, barbersTable, bookingsTable } from "@workspace/db";
 import { PAYMENT_COUNTRIES } from "../lib/payment-countries";
 import { hashPassword, normalizeEmail } from "../lib/password";
 import { findBestAvailableBarber } from "../lib/booking-dispatch";
+import {
+  GoogleAuthNotConfiguredError,
+  isTrustedBrowserOrigin,
+  verifyGoogleCredential,
+} from "../lib/google-identity";
 
 const router: IRouter = Router();
 
@@ -87,7 +92,38 @@ router.post("/barbers", async (req, res): Promise<void> => {
     return;
   }
 
-  const { email: submittedEmail, password, ...profile } = parsed.data;
+  const {
+    email: submittedEmail,
+    password,
+    googleCredential,
+    ...profile
+  } = parsed.data;
+  if (!password && !googleCredential) {
+    res.status(400).json({ error: "Provide a password or a Google account" });
+    return;
+  }
+  if (googleCredential && !isTrustedBrowserOrigin(req)) {
+    res.status(403).json({ error: "Untrusted request origin" });
+    return;
+  }
+
+  let googleIdentity: Awaited<ReturnType<typeof verifyGoogleCredential>> | null = null;
+  if (googleCredential) {
+    try {
+      googleIdentity = await verifyGoogleCredential(googleCredential);
+    } catch (error) {
+      if (error instanceof GoogleAuthNotConfiguredError) {
+        res.status(503).json({ error: "Google authentication is not configured" });
+      } else {
+        res.status(401).json({ error: "Invalid Google credential" });
+      }
+      return;
+    }
+    if (googleIdentity.email !== normalizeEmail(submittedEmail)) {
+      res.status(400).json({ error: "The profile email must match the Google account" });
+      return;
+    }
+  }
   const country = PAYMENT_COUNTRIES.find(
     (item) => item.countryCode === profile.countryCode,
   );
@@ -116,7 +152,8 @@ router.post("/barbers", async (req, res): Promise<void> => {
         ...profile,
         currency: country.currency,
         email,
-        passwordHash: await hashPassword(password),
+        passwordHash: password ? await hashPassword(password) : null,
+        googleSub: googleIdentity?.googleSub ?? null,
         accessCodeHash,
         imageUrl: null,
         status: "pending",

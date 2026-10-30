@@ -19,4 +19,5 @@
 
 export * from "./barbers";
 export * from "./bookings";
+export * from "./customers";
 export * from "./payment-countries";

@@ -172,7 +172,12 @@ export interface BarberInput {
      * @minLength 12
      * @maxLength 128
      */
-  password: string;
+  password?: string;
+  /**
+     * @minLength 20
+     * @maxLength 16384
+     */
+  googleCredential?: string;
   /**
      * @minimum 0
      * @maximum 10000
@@ -185,6 +190,14 @@ export interface BarberInput {
   currency: string;
   /** @minItems 1 */
   services: BarberServiceInput[];
+}
+
+export interface GoogleCredentialInput {
+  /**
+     * @minLength 20
+     * @maxLength 16384
+     */
+  credential: string;
 }
 
 export type BarberSubmissionStatus = typeof BarberSubmissionStatus[keyof typeof BarberSubmissionStatus];
@@ -257,6 +270,13 @@ export interface BarberSession {
   barberName?: string;
   isAvailable?: boolean;
   hasLocation?: boolean;
+}
+
+export interface CustomerSession {
+  authenticated: boolean;
+  customerId?: number;
+  customerName?: string;
+  email?: string;
 }
 
 export interface BarberAvailabilityInput {

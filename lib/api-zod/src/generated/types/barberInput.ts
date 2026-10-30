@@ -42,7 +42,12 @@ export interface BarberInput {
      * @minLength 12
      * @maxLength 128
      */
-  password: string;
+  password?: string;
+  /**
+     * @minLength 20
+     * @maxLength 16384
+     */
+  googleCredential?: string;
   /**
      * @minimum 0
      * @maximum 10000

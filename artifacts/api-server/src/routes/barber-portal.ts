@@ -13,6 +13,8 @@ import {
   LoginBarberByEmailResponse,
   LoginBarberBody,
   LoginBarberResponse,
+  LoginBarberWithGoogleBody,
+  LoginBarberWithGoogleResponse,
   LogoutBarberResponse,
   RecoverBarberPasswordBody,
   RecoverBarberPasswordResponse,
@@ -21,6 +23,11 @@ import {
 } from "@workspace/api-zod";
 import { db, barbersTable, bookingsTable } from "@workspace/db";
 import { hashPassword, normalizeEmail, verifyPassword } from "../lib/password";
+import {
+  GoogleAuthNotConfiguredError,
+  isTrustedBrowserOrigin,
+  verifyGoogleCredential,
+} from "../lib/google-identity";
 import {
   assignNextBarber,
   hasBookingResponseTimedOut,
@@ -263,6 +270,103 @@ router.post("/barber/email-session", async (req, res): Promise<void> => {
   setBarberCookie(req, res, barber.id);
   res.json(
     LoginBarberByEmailResponse.parse({
+      authenticated: true,
+      barberId: barber.id,
+      barberName: barber.name,
+    }),
+  );
+});
+
+router.post("/barber/google-session", async (req, res): Promise<void> => {
+  res.setHeader("Cache-Control", "no-store");
+  if (!isTrustedBrowserOrigin(req)) {
+    res.status(403).json({ error: "Untrusted request origin" });
+    return;
+  }
+  if (!process.env.SESSION_SECRET) {
+    res.status(503).json({ error: "Barber authentication is not configured" });
+    return;
+  }
+
+  const parsed = LoginBarberWithGoogleBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  if (tooManyLoginAttempts(req, res)) return;
+
+  let identity;
+  try {
+    identity = await verifyGoogleCredential(parsed.data.credential);
+  } catch (error) {
+    if (error instanceof GoogleAuthNotConfiguredError) {
+      res.status(503).json({ error: "Google authentication is not configured" });
+    } else {
+      recordFailedLogin(req);
+      res.status(401).json({ error: "Invalid Google credential" });
+    }
+    return;
+  }
+
+  let [barber] = await db
+    .select({
+      id: barbersTable.id,
+      name: barbersTable.name,
+      googleSub: barbersTable.googleSub,
+    })
+    .from(barbersTable)
+    .where(eq(barbersTable.googleSub, identity.googleSub))
+    .limit(1);
+
+  if (!barber) {
+    const [emailBarber] = await db
+      .select({
+        id: barbersTable.id,
+        name: barbersTable.name,
+        googleSub: barbersTable.googleSub,
+      })
+      .from(barbersTable)
+      .where(eq(barbersTable.email, identity.email))
+      .limit(1);
+
+    if (!emailBarber) {
+      recordFailedLogin(req);
+      res.status(404).json({ error: "No barber profile is registered with this Google email" });
+      return;
+    }
+    if (emailBarber.googleSub && emailBarber.googleSub !== identity.googleSub) {
+      res.status(409).json({ error: "This profile is linked to another Google account" });
+      return;
+    }
+
+    try {
+      [barber] = await db
+        .update(barbersTable)
+        .set({ googleSub: identity.googleSub })
+        .where(eq(barbersTable.id, emailBarber.id))
+        .returning({
+          id: barbersTable.id,
+          name: barbersTable.name,
+          googleSub: barbersTable.googleSub,
+        });
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        res.status(409).json({ error: "This Google account is linked to another barber profile" });
+        return;
+      }
+      throw error;
+    }
+  }
+
+  if (!barber) {
+    res.status(409).json({ error: "Could not link this Google account" });
+    return;
+  }
+
+  failedLoginAttempts.delete(req.ip || req.socket.remoteAddress || "unknown");
+  setBarberCookie(req, res, barber.id);
+  res.json(
+    LoginBarberWithGoogleResponse.parse({
       authenticated: true,
       barberId: barber.id,
       barberName: barber.name,

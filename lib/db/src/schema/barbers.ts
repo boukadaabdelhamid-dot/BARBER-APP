@@ -22,6 +22,7 @@ export const barbersTable = pgTable("barbers", {
   currency: text("currency").notNull().default("EUR"),
   phone: text("phone").notNull(),
   email: text("email"),
+  googleSub: text("google_sub"),
   passwordHash: text("password_hash"),
   accessCodeHash: text("access_code_hash"),
   imageUrl: text("image_url"),
@@ -31,7 +32,10 @@ export const barbersTable = pgTable("barbers", {
   longitude: real("longitude"),
   services: jsonb("services").$type<BarberService[]>().notNull().default([]),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (table) => [uniqueIndex("barbers_email_unique").on(table.email)]);
+}, (table) => [
+  uniqueIndex("barbers_email_unique").on(table.email),
+  uniqueIndex("barbers_google_sub_unique").on(table.googleSub),
+]);
 
 export const insertBarberSchema = createInsertSchema(barbersTable).omit({
   id: true,

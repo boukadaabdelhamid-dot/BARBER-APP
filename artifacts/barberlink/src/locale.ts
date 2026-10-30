@@ -307,3 +307,30 @@ export function LanguageControl() {
   createElement('span', { lang: 'fr', dir: 'ltr' }, 'Français'),
   locale === 'fr' ? createElement(Check, { size: 14, 'aria-hidden': true }) : null)) : null);
 }
+
+Object.assign(translations, {
+  'Google · إعداد المعرف مطلوب':'Google · configuration de l’identifiant requise',
+  'Google اختياري للعميل؛ يمكنك متابعة الحجز كضيف.':'Google est facultatif pour les clients ; vous pouvez continuer comme invité.',
+  'تم الدخول باستخدام Google':'Connecté avec Google',
+  'تعذّر تسجيل الدخول عبر Google. حاول مرة أخرى.':'La connexion Google a échoué. Réessayez.',
+  'لم نعثر على ملف حلاق بهذا البريد. أنشئ ملفك أولًا.':'Aucun profil de barbier ne correspond à cette adresse. Créez d’abord votre profil.',
+  'ادخل باستخدام Google':'Connectez-vous avec Google',
+  'أو أنشئ ملفك بكلمة مرور':'Ou créez votre profil avec un mot de passe',
+  'تحتاج إلى إعداد Google قبل تفعيله.':'Google doit être configuré avant son activation.',
+  'المتابعة كضيف':'Continuer comme invité',
+  'تسجيل الدخول عبر Google':'Se connecter avec Google',
+  'الدخول باستخدام Google':'Connexion avec Google',
+  'استخدم Google أو أدخل كلمة مرور':'Utilisez Google ou créez un mot de passe',
+  'إلغاء اختيار Google':'Annuler l’inscription Google',
+  'استخدم Google في المرات القادمة للدخول':'Utilisez Google pour vos prochaines connexions',
+  'يُرجى تسجيل الدخول أو إنشاء ملف حلاق أولًا.':'Connectez-vous ou créez d’abord un profil de barbier.',
+  'تم التحقق من حساب Google':'Compte Google vérifié',
+  'أو تابع الحجز كضيف دون إنشاء حساب':'Ou continuez en tant qu’invité, sans compte',
+  'جارٍ تسجيل الدخول…':'Connexion…',
+  'تسجيل الدخول بحساب Google اختياري':'La connexion avec Google est facultative',
+  'إنشاء ملف حلاق جديد':'Créer un profil de barbier',
+  'استخدم حساب Google المرتبط للدخول.':'Connectez-vous avec le compte Google associé.',
+  'رقم الملف والرمز':'Identifiant et code',
+  'البريد وكلمة المرور':'E-mail et mot de passe',
+  'إنشاء ملف جديد':'Créer un profil',
+});

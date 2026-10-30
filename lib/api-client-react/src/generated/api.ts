@@ -44,7 +44,9 @@ import type {
   BookingDecisionInput,
   BookingInput,
   BookingTracking,
+  CustomerSession,
   GetBookingStatusParams,
+  GoogleCredentialInput,
   HealthStatus,
   ListBarbersParams,
   PaymentCountry,
@@ -927,6 +929,357 @@ export const useLoginBarberByEmail = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getLoginBarberByEmailMutationOptions(options), queryClient);
+    }
+
+export const getLoginBarberWithGoogleUrl = () => {
+
+
+
+
+  return `/api/barber/google-session`
+}
+
+/**
+ * @summary Start a barber session with Google
+ */
+export const loginBarberWithGoogle = async (googleCredentialInput: GoogleCredentialInput, options?: Parameters<typeof customFetch>[1]): Promise<BarberSession> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<BarberSession>(getLoginBarberWithGoogleUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(googleCredentialInput)
+  }
+);}
+
+
+
+
+
+export const getLoginBarberWithGoogleMutationKey = () => ['loginBarberWithGoogle'] as const;
+
+export const getLoginBarberWithGoogleMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loginBarberWithGoogle>>, TError,LoginBarberWithGoogleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof loginBarberWithGoogle>>, TError,LoginBarberWithGoogleMutationVariables, TContext> => {
+
+const mutationKey = getLoginBarberWithGoogleMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof loginBarberWithGoogle>>, LoginBarberWithGoogleMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  loginBarberWithGoogle(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LoginBarberWithGoogleMutationResult = NonNullable<Awaited<ReturnType<typeof loginBarberWithGoogle>>>
+    export type LoginBarberWithGoogleMutationBody = BodyType<GoogleCredentialInput>
+    export type LoginBarberWithGoogleMutationError = ErrorType<void>
+    export type LoginBarberWithGoogleMutationVariables = {data: BodyType<GoogleCredentialInput>}
+
+    /**
+ * @summary Start a barber session with Google
+ */
+export const useLoginBarberWithGoogle = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loginBarberWithGoogle>>, TError,LoginBarberWithGoogleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof loginBarberWithGoogle>>,
+        TError,
+        LoginBarberWithGoogleMutationVariables,
+        TContext
+      > => {
+      return useMutation(getLoginBarberWithGoogleMutationOptions(options), queryClient);
+    }
+
+export const getLoginCustomerWithGoogleUrl = () => {
+
+
+
+
+  return `/api/customer/google-session`
+}
+
+/**
+ * @summary Sign in or register a customer with Google
+ */
+export const loginCustomerWithGoogle = async (googleCredentialInput: GoogleCredentialInput, options?: Parameters<typeof customFetch>[1]): Promise<CustomerSession> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CustomerSession>(getLoginCustomerWithGoogleUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(googleCredentialInput)
+  }
+);}
+
+
+
+
+
+export const getLoginCustomerWithGoogleMutationKey = () => ['loginCustomerWithGoogle'] as const;
+
+export const getLoginCustomerWithGoogleMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loginCustomerWithGoogle>>, TError,LoginCustomerWithGoogleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof loginCustomerWithGoogle>>, TError,LoginCustomerWithGoogleMutationVariables, TContext> => {
+
+const mutationKey = getLoginCustomerWithGoogleMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof loginCustomerWithGoogle>>, LoginCustomerWithGoogleMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  loginCustomerWithGoogle(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LoginCustomerWithGoogleMutationResult = NonNullable<Awaited<ReturnType<typeof loginCustomerWithGoogle>>>
+    export type LoginCustomerWithGoogleMutationBody = BodyType<GoogleCredentialInput>
+    export type LoginCustomerWithGoogleMutationError = ErrorType<void>
+    export type LoginCustomerWithGoogleMutationVariables = {data: BodyType<GoogleCredentialInput>}
+
+    /**
+ * @summary Sign in or register a customer with Google
+ */
+export const useLoginCustomerWithGoogle = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loginCustomerWithGoogle>>, TError,LoginCustomerWithGoogleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof loginCustomerWithGoogle>>,
+        TError,
+        LoginCustomerWithGoogleMutationVariables,
+        TContext
+      > => {
+      return useMutation(getLoginCustomerWithGoogleMutationOptions(options), queryClient);
+    }
+
+export const getGetCustomerSessionUrl = () => {
+
+
+
+
+  return `/api/customer/session`
+}
+
+/**
+ * @summary Check the current customer session
+ */
+export const getCustomerSession = async ( options?: Parameters<typeof customFetch>[1]): Promise<CustomerSession> => {
+
+  return customFetch<CustomerSession>(getGetCustomerSessionUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCustomerSessionQueryKey = () => {
+    return [
+    `/api/customer/session`
+    ] as const;
+    }
+
+
+export const getGetCustomerSessionQueryOptions = <TData = Awaited<ReturnType<typeof getCustomerSession>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCustomerSession>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCustomerSessionQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCustomerSession>>> = ({ signal }) => getCustomerSession({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCustomerSession>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetCustomerSessionQueryResult = NonNullable<Awaited<ReturnType<typeof getCustomerSession>>>
+export type GetCustomerSessionQueryError = ErrorType<unknown>
+
+
+export function useGetCustomerSession<TData = Awaited<ReturnType<typeof getCustomerSession>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCustomerSession>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCustomerSession>>,
+          TError,
+          Awaited<ReturnType<typeof getCustomerSession>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetCustomerSession<TData = Awaited<ReturnType<typeof getCustomerSession>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCustomerSession>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCustomerSession>>,
+          TError,
+          Awaited<ReturnType<typeof getCustomerSession>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetCustomerSession<TData = Awaited<ReturnType<typeof getCustomerSession>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCustomerSession>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Check the current customer session
+ */
+
+export function useGetCustomerSession<TData = Awaited<ReturnType<typeof getCustomerSession>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCustomerSession>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetCustomerSessionQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getLogoutCustomerUrl = () => {
+
+
+
+
+  return `/api/customer/session`
+}
+
+/**
+ * @summary End the current customer session
+ */
+export const logoutCustomer = async ( options?: Parameters<typeof customFetch>[1]): Promise<CustomerSession> => {
+
+  return customFetch<CustomerSession>(getLogoutCustomerUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getLogoutCustomerMutationKey = () => ['logoutCustomer'] as const;
+
+export const getLogoutCustomerMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof logoutCustomer>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof logoutCustomer>>, TError,void, TContext> => {
+
+const mutationKey = getLogoutCustomerMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof logoutCustomer>>, void> = () => {
+
+
+          return  logoutCustomer(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LogoutCustomerMutationResult = NonNullable<Awaited<ReturnType<typeof logoutCustomer>>>
+
+    export type LogoutCustomerMutationError = ErrorType<unknown>
+
+
+    /**
+ * @summary End the current customer session
+ */
+export const useLogoutCustomer = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof logoutCustomer>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof logoutCustomer>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getLogoutCustomerMutationOptions(options), queryClient);
     }
 
 export const getRecoverBarberPasswordUrl = () => {

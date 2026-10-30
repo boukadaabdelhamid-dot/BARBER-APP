@@ -75,6 +75,9 @@ export const createBarberBodyEmailMax = 254;
 export const createBarberBodyPasswordMin = 12;
 export const createBarberBodyPasswordMax = 128;
 
+export const createBarberBodyGoogleCredentialMin = 20;
+export const createBarberBodyGoogleCredentialMax = 16384;
+
 export const createBarberBodyTravelFeeMin = 0;
 export const createBarberBodyTravelFeeMax = 10000;
 
@@ -103,7 +106,8 @@ export const CreateBarberBody = zod.object({
   "bio": zod.string().min(createBarberBodyBioMin).max(createBarberBodyBioMax),
   "phone": zod.string().min(createBarberBodyPhoneMin).max(createBarberBodyPhoneMax),
   "email": zod.string().email().max(createBarberBodyEmailMax),
-  "password": zod.string().min(createBarberBodyPasswordMin).max(createBarberBodyPasswordMax),
+  "password": zod.string().min(createBarberBodyPasswordMin).max(createBarberBodyPasswordMax).optional(),
+  "googleCredential": zod.string().min(createBarberBodyGoogleCredentialMin).max(createBarberBodyGoogleCredentialMax).optional(),
   "travelFee": zod.number().min(createBarberBodyTravelFeeMin).max(createBarberBodyTravelFeeMax),
   "currency": zod.string().min(createBarberBodyCurrencyMin).max(createBarberBodyCurrencyMax),
   "services": zod.array(zod.object({
@@ -239,6 +243,69 @@ export const LoginBarberByEmailResponse = zod.object({
   "barberName": zod.string().optional(),
   "isAvailable": zod.boolean().optional(),
   "hasLocation": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Start a barber session with Google
+ */
+export const loginBarberWithGoogleBodyCredentialMin = 20;
+export const loginBarberWithGoogleBodyCredentialMax = 16384;
+
+
+
+export const LoginBarberWithGoogleBody = zod.object({
+  "credential": zod.string().min(loginBarberWithGoogleBodyCredentialMin).max(loginBarberWithGoogleBodyCredentialMax)
+})
+
+export const LoginBarberWithGoogleResponse = zod.object({
+  "authenticated": zod.boolean(),
+  "barberId": zod.number().int().optional(),
+  "barberName": zod.string().optional(),
+  "isAvailable": zod.boolean().optional(),
+  "hasLocation": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Sign in or register a customer with Google
+ */
+export const loginCustomerWithGoogleBodyCredentialMin = 20;
+export const loginCustomerWithGoogleBodyCredentialMax = 16384;
+
+
+
+export const LoginCustomerWithGoogleBody = zod.object({
+  "credential": zod.string().min(loginCustomerWithGoogleBodyCredentialMin).max(loginCustomerWithGoogleBodyCredentialMax)
+})
+
+export const LoginCustomerWithGoogleResponse = zod.object({
+  "authenticated": zod.boolean(),
+  "customerId": zod.number().int().optional(),
+  "customerName": zod.string().optional(),
+  "email": zod.string().email().optional()
+})
+
+
+/**
+ * @summary Check the current customer session
+ */
+export const GetCustomerSessionResponse = zod.object({
+  "authenticated": zod.boolean(),
+  "customerId": zod.number().int().optional(),
+  "customerName": zod.string().optional(),
+  "email": zod.string().email().optional()
+})
+
+
+/**
+ * @summary End the current customer session
+ */
+export const LogoutCustomerResponse = zod.object({
+  "authenticated": zod.boolean(),
+  "customerId": zod.number().int().optional(),
+  "customerName": zod.string().optional(),
+  "email": zod.string().email().optional()
 })
 
 

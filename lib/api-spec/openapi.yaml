@@ -16,6 +16,8 @@ tags:
     description: Booking requests
   - name: barberPortal
     description: Barber booking management
+  - name: customers
+    description: Optional customer accounts
   - name: admin
     description: Protected barber profile review
   - name: payments
@@ -181,6 +183,85 @@ paths:
           description: Too many login attempts
         "503":
           description: Barber authentication is not configured
+  /barber/google-session:
+    post:
+      operationId: loginBarberWithGoogle
+      tags: [barberPortal]
+      summary: Start a barber session with Google
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoogleCredentialInput"
+      responses:
+        "200":
+          description: Barber session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BarberSession"
+        "401":
+          description: Invalid Google credential
+        "403":
+          description: Untrusted request origin
+        "404":
+          description: Barber profile not found
+        "409":
+          description: Google account conflicts with the barber email
+        "429":
+          description: Too many login attempts
+        "503":
+          description: Google authentication is not configured
+  /customer/google-session:
+    post:
+      operationId: loginCustomerWithGoogle
+      tags: [customers]
+      summary: Sign in or register a customer with Google
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoogleCredentialInput"
+      responses:
+        "200":
+          description: Customer session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerSession"
+        "401":
+          description: Invalid Google credential
+        "403":
+          description: Untrusted request origin
+        "409":
+          description: Google account conflicts with the customer email
+        "503":
+          description: Google authentication is not configured
+  /customer/session:
+    get:
+      operationId: getCustomerSession
+      tags: [customers]
+      summary: Check the current customer session
+      responses:
+        "200":
+          description: Customer session status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerSession"
+    delete:
+      operationId: logoutCustomer
+      tags: [customers]
+      summary: End the current customer session
+      responses:
+        "200":
+          description: Customer session ended
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerSession"
   /barber/password-recovery:
     post:
       operationId: recoverBarberPassword
@@ -545,7 +626,7 @@ components:
         price: { type: number, minimum: 0, maximum: 10000 }
     BarberInput:
       type: object
-      required: [name, countryCode, city, areas, bio, phone, email, password, travelFee, currency, services]
+      required: [name, countryCode, city, areas, bio, phone, email, travelFee, currency, services]
       properties:
         name: { type: string, minLength: 2, maxLength: 100 }
         countryCode: { type: string, enum: [FR, AE, QA, SA] }
@@ -558,6 +639,7 @@ components:
         phone: { type: string, minLength: 7, maxLength: 30 }
         email: { type: string, format: email, maxLength: 254 }
         password: { type: string, minLength: 12, maxLength: 128 }
+        googleCredential: { type: string, minLength: 20, maxLength: 16384 }
         travelFee: { type: number, minimum: 0, maximum: 10000 }
         currency: { type: string, minLength: 3, maxLength: 3 }
         services:
@@ -565,6 +647,11 @@ components:
           minItems: 1
           items:
             $ref: "#/components/schemas/BarberServiceInput"
+    GoogleCredentialInput:
+      type: object
+      required: [credential]
+      properties:
+        credential: { type: string, minLength: 20, maxLength: 16384 }
     BarberSubmission:
       type: object
       required: [id, status, message, accessCode]
@@ -609,6 +696,14 @@ components:
         barberName: { type: string }
         isAvailable: { type: boolean }
         hasLocation: { type: boolean }
+    CustomerSession:
+      type: object
+      required: [authenticated]
+      properties:
+        authenticated: { type: boolean }
+        customerId: { type: integer }
+        customerName: { type: string }
+        email: { type: string, format: email }
     BarberAvailabilityInput:
       type: object
       required: [isAvailable]

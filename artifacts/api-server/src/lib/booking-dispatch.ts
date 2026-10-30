@@ -42,6 +42,7 @@ export async function assignNextBarber(
   );
   const next = await findBestAvailableBarber({
     serviceName: booking.serviceName,
+    countryCode: booking.countryCode,
     city: booking.city,
     area: booking.area,
     locationMode: booking.locationMode as "manual" | "gps",

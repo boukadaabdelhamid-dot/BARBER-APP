@@ -12,6 +12,9 @@ import {
   useListBarbers,
   useListBarberBookings,
   useListPendingBarbers,
+  useListPaymentCountries,
+  useListAdminPaymentCountries,
+  useUpdateAdminPaymentCountry,
   useLoginAdmin,
   useLoginBarber,
   useLoginBarberByEmail,
@@ -28,12 +31,15 @@ import {
   getListBarbersQueryKey,
   getListBarberBookingsQueryKey,
   getListPendingBarbersQueryKey,
+  getListPaymentCountriesQueryKey,
+  getListAdminPaymentCountriesQueryKey,
   type Barber,
   type BarberReview,
   type BarberInput,
   type BookingInput,
   type BookingTracking,
   type BarberBooking,
+  type PaymentCountry,
 } from '@workspace/api-client-react';
 import { setBaseUrl } from '@workspace/api-client-react';
 import {
@@ -317,6 +323,7 @@ function BarberCard({
 
 function Home() {
   const [mode, setMode] = useState<'browse' | 'suggest'>('browse');
+  const [countryCode, setCountryCode] = useState<PaymentCountry['countryCode'] | ''>('');
   const [city, setCity] = useState('');
   const [area, setArea] = useState('');
   const [serviceName, setServiceName] = useState('');
@@ -325,9 +332,12 @@ function Home() {
   const [modalMode, setModalMode] = useState<'profile' | 'booking' | null>(null);
   const [activeServiceId, setActiveServiceId] = useState('');
   const [suggestionReady, setSuggestionReady] = useState(false);
-  const params = useMemo(() => ({}), []);
+  const params = useMemo(() => countryCode ? ({ countryCode }) : ({}), [countryCode]);
+  const countriesQuery = useListPaymentCountries({
+    query: { queryKey: getListPaymentCountriesQueryKey(), staleTime: 60_000 },
+  });
   const listQuery = useListBarbers(params, {
-    query: { queryKey: getListBarbersQueryKey(params), refetchInterval: 15000 },
+    query: { queryKey: getListBarbersQueryKey(params), refetchInterval: 15000, enabled: Boolean(countryCode) },
   });
   const health = useHealthCheck();
   const barberQuery = useGetBarber(activeBarberId ?? 0, {
@@ -336,7 +346,7 @@ function Home() {
       queryKey: getGetBarberQueryKey(activeBarberId ?? 0),
     },
   });
-  const barbers = (listQuery.data ?? []).filter((barber) => barber.status === 'active');
+  const barbers = (listQuery.data ?? []).filter((barber) => barber.status === 'active' && barber.countryCode === countryCode);
   const cities = [...new Set(barbers.map((barber) => barber.city).filter(Boolean))].sort((a, b) => a.localeCompare(b));
   const cityBarbers = barbers.filter((barber) => !city || barber.city.trim().toLocaleLowerCase() === city.trim().toLocaleLowerCase());
   const services = [...new Set(cityBarbers.flatMap((barber) => barber.services.map((service) => service.name)))].sort((a, b) => a.localeCompare(b));
@@ -375,6 +385,7 @@ function Home() {
   };
   const closeModal = () => { setModalMode(null); setActiveBarberId(null); setActiveServiceId(''); };
   const clearCriteria = () => {
+    setCountryCode('');
     setCity('');
     setArea('');
     setServiceName('');
@@ -410,8 +421,29 @@ function Home() {
           </div>
           <div className="criteria-grid">
             <label className="field">
+              <span>الدولة <b aria-hidden="true">*</b></span>
+              <select
+                value={countryCode}
+                onChange={(event) => {
+                  setCountryCode(event.target.value as PaymentCountry['countryCode'] | '');
+                  setCity('');
+                  setArea('');
+                  setServiceName('');
+                  setSuggestionReady(false);
+                }}
+                required
+                aria-label="الدولة"
+                data-testid="select-discover-country"
+              >
+                <option value="">اختر الدولة</option>
+                {(countriesQuery.data ?? []).map((country) => (
+                  <option key={country.countryCode} value={country.countryCode}>{country.countryName}</option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
               <span>المدينة <b aria-hidden="true">*</b></span>
-              <select value={city} onChange={(event) => { setCity(event.target.value); setArea(''); setServiceName(''); setSuggestionReady(false); }} required aria-label="المدينة" data-testid="select-discover-city">
+              <select value={city} onChange={(event) => { setCity(event.target.value); setArea(''); setServiceName(''); setSuggestionReady(false); }} required disabled={!countryCode} aria-label="المدينة" data-testid="select-discover-city">
                 <option value="">اختر المدينة</option>
                 {cities.map((value) => <option key={value} value={value}>{value}</option>)}
               </select>
@@ -429,7 +461,11 @@ function Home() {
               </select>
             </label>
           </div>
-          {mode === 'browse' && (
+          {countriesQuery.isLoading ? (
+            <div className="country-loading" role="status">جارٍ تحميل الدول المدعومة…</div>
+          ) : countriesQuery.isError ? (
+            <ErrorMessage onRetry={() => void countriesQuery.refetch()}>تعذّر تحميل الدول. أعد المحاولة للمتابعة.</ErrorMessage>
+          ) : mode === 'browse' && (
             <label className="search-control discover-search-control">
               <Search aria-hidden="true" />
               <input
@@ -453,18 +489,23 @@ function Home() {
           {mode === 'suggest' && (
             <div className="suggest-action">
               <div><strong>ترشيح من بيانات الحلاقين المسجلين</strong><small>نرتّب التغطية المطابقة أولًا، ثم التقييم وعدد المراجعات.</small></div>
-              <button type="button" className="book-button" disabled={!city || !area.trim() || !serviceName} onClick={() => setSuggestionReady(true)} data-testid="button-find-suggestion">
+              <button type="button" className="book-button" disabled={!countryCode || !city || !area.trim() || !serviceName} onClick={() => setSuggestionReady(true)} data-testid="button-find-suggestion">
                 اعثر على الأنسب <ArrowLeft aria-hidden="true" />
               </button>
             </div>
           )}
           <div className="results-meta discover-results-meta">
             <span><strong>{listQuery.isLoading ? '—' : (mode === 'suggest' && suggestionReady ? visibleMatches.length : matchingBarbers.length)}</strong> نتيجة مناسبة</span>
-            {city && serviceName && <span className="criteria-caption">{city}{area ? ` · ${area}` : ''} · {serviceName}</span>}
+            {countryCode && city && serviceName && <span className="criteria-caption">{countriesQuery.data?.find((country) => country.countryCode === countryCode)?.countryName} · {city}{area ? ` · ${area}` : ''} · {serviceName}</span>}
           </div>
           {health.data?.status && <span className="health-state" data-testid="status-api">الخدمة متصلة</span>}
           <p className="coverage-disclaimer" data-testid="text-coverage-disclaimer"><MapPin aria-hidden="true" /> التغطية مبنية على مناطق الخدمة المسجلة لدى الحلاقين، وليست قياسًا للمسافة أو التوفر الفوري.</p>
-          {listQuery.isLoading ? <LoadingCards /> : listQuery.isError ? (
+          {!countryCode ? (
+            <div className="discovery-prompt" data-testid="status-discovery-prompt">
+              <div className="empty-icon"><MapPin aria-hidden="true" /></div>
+              <div><h3>ابدأ باختيار الدولة</h3><p>بعد تحديد الدولة ستظهر المدن والخدمات والحلاقون المتاحون فيها فقط.</p></div>
+            </div>
+          ) : listQuery.isLoading ? <LoadingCards /> : listQuery.isError ? (
             <ErrorMessage onRetry={() => void listQuery.refetch()}>تعذّر تحميل الحلاقين الآن. تحقق من اتصالك ثم أعد المحاولة.</ErrorMessage>
           ) : !city || !serviceName || (mode === 'suggest' && !area.trim()) ? (
             <div className="discovery-prompt" data-testid="status-discovery-prompt">
@@ -582,6 +623,9 @@ function BarberModal({
     attemptCount: number;
   } | null>(null);
   const booking = useCreateBooking();
+  const countriesQuery = useListPaymentCountries({
+    query: { queryKey: getListPaymentCountriesQueryKey(), staleTime: 60_000 },
+  });
   const [formError, setFormError] = useState('');
   const [locationMode, setLocationMode] = useState<'manual' | 'gps'>('manual');
   const [coordinates, setCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -602,7 +646,10 @@ function BarberModal({
 
   const submitBooking = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!barber || !requestedService) return;
+    if (!barber || !requestedService || !barber.countryCode) {
+      setFormError('لا يمكن إرسال الطلب لهذا الملف لعدم تحديد الدولة.');
+      return;
+    }
     const form = new FormData(event.currentTarget);
     const area = String(form.get('area') || '').trim();
     if (locationMode === 'manual' && area.length < 2) {
@@ -615,6 +662,7 @@ function BarberModal({
     }
     const payload: BookingInput = {
       serviceName: requestedService.name,
+      countryCode: barber.countryCode,
       city: initialCity || barber.city,
       locationMode,
       customerName: String(form.get('customerName') || '').trim(),
@@ -801,9 +849,21 @@ function BarberModal({
             </div>
               <div className="payment-preparation" data-testid="status-payment-preparation">
                 <CreditCard aria-hidden="true" />
-                <span>ستُضاف خطوة الدفع الإلكتروني قبل إرسال الطلب بعد ربط بوابة الدفع. لا يتم تحصيل أي مبلغ الآن.</span>
+                <span>
+                  {countriesQuery.isLoading ? 'جارٍ تحميل إعداد الدفع لهذه الدولة…' : countriesQuery.isError
+                    ? 'تعذّر تحميل إعداد الدفع لهذه الدولة.'
+                    : (() => {
+                      const paymentCountry = countriesQuery.data?.find((item) => item.countryCode === barber.countryCode);
+                      if (!paymentCountry) return 'إعداد الدفع لهذه الدولة غير متاح حاليًا.';
+                      const preference = paymentCountry.enabled ? 'إعداد الدولة مفعّل' : 'إعداد الدولة غير مفعّل';
+                      const readiness = paymentCountry.providerReady ? 'مزود الدفع جاهز' : 'مزود الدفع غير مهيأ بعد';
+                      const accepting = paymentCountry.acceptingPayments ? 'الدفع الإلكتروني متاح' : 'الدفع الإلكتروني غير متاح';
+                      return `${paymentCountry.countryName} · ${preference} · ${readiness} · ${accepting}. لا يتم تحصيل أي مبلغ الآن.`;
+                    })()}
+                </span>
               </div>
-            <button className="submit-button" type="submit" disabled={booking.isPending} data-testid="button-submit-booking">
+            {!barber.countryCode && <div className="status-banner error" role="alert">لا يمكن إرسال طلب لهذا الملف قبل تحديد دولته.</div>}
+            <button className="submit-button" type="submit" disabled={booking.isPending || !barber.countryCode} data-testid="button-submit-booking">
               {booking.isPending ? 'جارٍ إرسال الطلب…' : <>إرسال طلب الموعد <ArrowLeft aria-hidden="true" /></>}
             </button>
             <div className="small-print">إرسال الطلب لا يعني تأكيد الموعد. لا تكتب عنوان المنزل الكامل هنا؛ شاركه مباشرة مع الحلاق بعد تأكيد الموعد.</div>
@@ -819,6 +879,11 @@ type ServiceDraft = { name: string; durationMinutes: string; price: string };
 function Join() {
   const barberGender = new URLSearchParams(window.location.search).get('gender');
   const createBarber = useCreateBarber();
+  const countriesQuery = useListPaymentCountries({
+    query: { queryKey: getListPaymentCountriesQueryKey(), staleTime: 60_000 },
+  });
+  const [selectedCountryCode, setSelectedCountryCode] = useState<PaymentCountry['countryCode'] | ''>('');
+  const selectedCountry = countriesQuery.data?.find((country) => country.countryCode === selectedCountryCode);
   const [services, setServices] = useState<ServiceDraft[]>([{ name: '', durationMinutes: '30', price: '' }]);
   const serviceCounter = useRef(1);
   const [formError, setFormError] = useState('');
@@ -849,6 +914,7 @@ function Join() {
     }));
     const payload: BarberInput = {
       name: String(form.get('name') || '').trim(),
+      countryCode: String(form.get('countryCode') || '') as PaymentCountry['countryCode'],
       city: String(form.get('city') || '').trim(),
       areas: String(form.get('areas') || '').split(/[،,]/).map((area) => area.trim()).filter(Boolean),
       bio: String(form.get('bio') || '').trim(),
@@ -856,7 +922,7 @@ function Join() {
       email: String(form.get('email') || '').trim().toLowerCase(),
       password,
       travelFee: Number(form.get('travelFee') || 0),
-      currency: String(form.get('currency') || '').trim().toUpperCase(),
+      currency: selectedCountry?.currency ?? '',
       services: serviceInputs,
     };
     setFormError('');
@@ -915,6 +981,26 @@ function Join() {
                   <input id="barber-name" name="name" required minLength={2} maxLength={100} placeholder="الاسم الكامل" data-testid="input-barber-name" />
                 </div>
                 <div className="field">
+                  <label htmlFor="barber-country">الدولة</label>
+                  <select
+                    id="barber-country"
+                    name="countryCode"
+                    value={selectedCountryCode}
+                    onChange={(event) => setSelectedCountryCode(event.target.value as PaymentCountry['countryCode'] | '')}
+                    required
+                    data-testid="select-barber-country"
+                  >
+                    <option value="">اختر الدولة</option>
+                    {(countriesQuery.data ?? []).map((country) => <option key={country.countryCode} value={country.countryCode}>{country.countryName}</option>)}
+                  </select>
+                  {countriesQuery.isLoading && <small role="status">جارٍ تحميل الدول…</small>}
+                  {countriesQuery.isError && (
+                    <small className="field-error" role="alert">
+                      تعذّر تحميل الدول. <button className="inline-retry" type="button" onClick={() => void countriesQuery.refetch()} data-testid="button-join-countries-retry">أعد المحاولة</button>
+                    </small>
+                  )}
+                </div>
+                <div className="field">
                   <label htmlFor="barber-city">المدينة</label>
                   <input id="barber-city" name="city" required minLength={2} maxLength={100} placeholder="المدينة التي تعمل فيها" data-testid="input-barber-city" />
                 </div>
@@ -950,8 +1036,8 @@ function Join() {
                 </div>
                 <div className="field">
                   <label htmlFor="barber-currency">رمز العملة</label>
-                  <input id="barber-currency" name="currency" required minLength={3} maxLength={3} pattern="[A-Za-z]{3}" placeholder="مثل USD أو EUR" data-testid="input-barber-currency" />
-                  <small>اكتب رمز العملة المكوّن من 3 أحرف.</small>
+                  <input id="barber-currency" name="currency" value={selectedCountry?.currency ?? ''} readOnly required minLength={3} maxLength={3} pattern="[A-Za-z]{3}" placeholder="يُحدد حسب الدولة" data-testid="input-barber-currency" />
+                  <small>تُحدد العملة تلقائيًا حسب الدولة المختارة.</small>
                 </div>
               </div>
               <div className="field" style={{ maxWidth: 300 }}>
@@ -1032,16 +1118,45 @@ function Admin() {
       retry: false,
     },
   });
+  const paymentCountries = useListAdminPaymentCountries({
+    query: {
+      queryKey: getListAdminPaymentCountriesQueryKey(),
+      enabled: authenticated,
+      retry: false,
+      staleTime: 0,
+    },
+  });
   const login = useLoginAdmin();
   const logout = useLogoutAdmin();
   const moderate = useModerateBarber();
   const issueAccessCode = useIssueBarberAccessCode();
+  const updatePaymentCountry = useUpdateAdminPaymentCountry();
   const [loginError, setLoginError] = useState('');
   const [decisionError, setDecisionError] = useState('');
   const [busyBarber, setBusyBarber] = useState<number | null>(null);
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [issuedAccessCode, setIssuedAccessCode] = useState<{ barberId: number; accessCode: string } | null>(null);
   const [accessCodeError, setAccessCodeError] = useState('');
+  const [paymentFeedback, setPaymentFeedback] = useState('');
+  const [paymentError, setPaymentError] = useState('');
+
+  const savePaymentPreference = (country: PaymentCountry, enabled: boolean) => {
+    setPaymentFeedback('');
+    setPaymentError('');
+    updatePaymentCountry.mutate(
+      { countryCode: country.countryCode, data: { enabled } },
+      {
+        onSuccess: async (updatedCountry) => {
+          setPaymentFeedback(`${updatedCountry.countryName}: تم حفظ تفضيل الإعداد. لم يتم تفعيل تحصيل المدفوعات.`);
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: getListAdminPaymentCountriesQueryKey() }),
+            queryClient.invalidateQueries({ queryKey: getListPaymentCountriesQueryKey() }),
+          ]);
+        },
+        onError: () => setPaymentError('تعذّر حفظ إعداد الدولة. لم يتغير الإعداد؛ حاول مرة أخرى.'),
+      },
+    );
+  };
 
   const submitLogin = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -1166,6 +1281,61 @@ function Admin() {
                 <span className="count-note"><span className="team-dot" /> طلبات جديدة</span>
               </div>
             </div>
+            <section className="payment-admin-section" aria-labelledby="payment-country-heading">
+              <div className="payment-admin-heading">
+                <div>
+                  <div className="admin-kicker">تهيئة مستقبلية</div>
+                  <h2 id="payment-country-heading">إعداد الدفع حسب الدولة</h2>
+                  <p>هذا التبديل يحفظ تفضيل الإعداد فقط. لا ينشئ صفحة دفع ولا يعني أن التحصيل متاح.</p>
+                </div>
+                <CreditCard aria-hidden="true" />
+              </div>
+              {paymentFeedback && <div className="payment-feedback" role="status" data-testid="status-payment-country-feedback"><Check size={16} />{paymentFeedback}</div>}
+              {paymentError && <div className="admin-alert admin-alert-wide" role="alert" data-testid="status-payment-country-error"><AlertCircle size={17} />{paymentError}</div>}
+              {paymentCountries.isLoading ? (
+                <div className="payment-country-skeleton" aria-label="جارٍ تحميل إعدادات الدول"><span /><span /></div>
+              ) : paymentCountries.isError ? (
+                <div className="payment-country-error" role="alert">
+                  <span>تعذّر تحميل إعدادات الدفع للدول.</span>
+                  <button className="admin-secondary-button" type="button" onClick={() => void paymentCountries.refetch()} data-testid="button-payment-countries-retry"><RefreshCw size={15} /> إعادة المحاولة</button>
+                </div>
+              ) : (
+                <div className="payment-country-list" data-testid="list-admin-payment-countries">
+                  {(paymentCountries.data ?? []).length === 0 ? (
+                    <div className="payment-country-empty" role="status">لا توجد دول متاحة لإعداد الدفع حاليًا.</div>
+                  ) : (paymentCountries.data ?? []).map((country) => (
+                    <article className="payment-country-row" key={country.countryCode} data-testid={`card-payment-country-${country.countryCode}`}>
+                      <div className="payment-country-copy">
+                        <strong>{country.countryName}</strong>
+                        <span>{country.countryCode} · {country.currency}</span>
+                      </div>
+                      <div className="payment-readiness">
+                        <span className={country.providerReady ? 'readiness-ready' : 'readiness-pending'}>
+                          {country.providerReady ? 'مزود الدفع جاهز' : 'مزود الدفع غير مهيأ'}
+                        </span>
+                        <small>{country.acceptingPayments ? 'استقبال المدفوعات مفعّل' : 'لا يتم استقبال مدفوعات'}</small>
+                      </div>
+                      <label className="payment-toggle">
+                        <input
+                          type="checkbox"
+                          checked={country.enabled}
+                          disabled={updatePaymentCountry.isPending}
+                          onChange={(event) => savePaymentPreference(country, event.target.checked)}
+                          aria-label={`${country.enabled ? 'تعطيل' : 'تفعيل'} تفضيل الدفع في ${country.countryName}`}
+                          data-testid={`toggle-payment-country-${country.countryCode}`}
+                        />
+                        <span aria-hidden="true" />
+                        <b>{country.enabled ? 'الإعداد مفعّل' : 'الإعداد متوقف'}</b>
+                      </label>
+                    </article>
+                  ))}
+                </div>
+              )}
+              <div className="payment-admin-disclaimer" role="note">
+                <ShieldCheck aria-hidden="true" />
+                <span>جاهزية مزود الدفع غير متوفرة حاليًا. تفعيل الإعداد لا يجعل الدفع مباشرًا، ولا يتم تحصيل أي مبلغ من العملاء.</span>
+              </div>
+            </section>
             <div className="review-toolbar">
               <div className="review-toolbar-title"><span className="review-number">01</span><strong>قائمة الملفات</strong><span className="review-divider" /> مراجعة كل ملف على حدة</div>
               <div className="admin-live"><span /> بيانات مباشرة</div>

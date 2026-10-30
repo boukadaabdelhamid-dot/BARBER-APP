@@ -9,12 +9,72 @@ export interface HealthStatus {
   status: string;
 }
 
+export type PaymentCountryCountryCode = typeof PaymentCountryCountryCode[keyof typeof PaymentCountryCountryCode];
+
+
+export const PaymentCountryCountryCode = {
+  FR: 'FR',
+  AE: 'AE',
+  QA: 'QA',
+  SA: 'SA',
+} as const;
+
+export type PaymentCountryCurrency = typeof PaymentCountryCurrency[keyof typeof PaymentCountryCurrency];
+
+
+export const PaymentCountryCurrency = {
+  EUR: 'EUR',
+  AED: 'AED',
+  QAR: 'QAR',
+  SAR: 'SAR',
+} as const;
+
+export interface PaymentCountry {
+  countryCode: PaymentCountryCountryCode;
+  countryName: string;
+  currency: PaymentCountryCurrency;
+  enabled: boolean;
+  providerReady: boolean;
+  acceptingPayments: boolean;
+}
+
+export interface PaymentCountryUpdate {
+  enabled: boolean;
+}
+
+export type PaymentCountryParamsCountryCode = typeof PaymentCountryParamsCountryCode[keyof typeof PaymentCountryParamsCountryCode];
+
+
+export const PaymentCountryParamsCountryCode = {
+  FR: 'FR',
+  AE: 'AE',
+  QA: 'QA',
+  SA: 'SA',
+} as const;
+
+export interface PaymentCountryParams {
+  countryCode: PaymentCountryParamsCountryCode;
+}
+
 export interface BarberService {
   id: string;
   name: string;
   durationMinutes: number;
   price: number;
 }
+
+/**
+ * @nullable
+ */
+export type BarberCountryCode = typeof BarberCountryCode[keyof typeof BarberCountryCode] | null;
+
+
+export const BarberCountryCode = {
+  FR: 'FR',
+  AE: 'AE',
+  QA: 'QA',
+  SA: 'SA',
+} as const;
 
 export type BarberStatus = typeof BarberStatus[keyof typeof BarberStatus];
 
@@ -28,6 +88,8 @@ export const BarberStatus = {
 export interface Barber {
   id: number;
   name: string;
+  /** @nullable */
+  countryCode: BarberCountryCode;
   city: string;
   areas: string[];
   bio: string;
@@ -66,12 +128,23 @@ export interface BarberServiceInput {
   price: number;
 }
 
+export type BarberInputCountryCode = typeof BarberInputCountryCode[keyof typeof BarberInputCountryCode];
+
+
+export const BarberInputCountryCode = {
+  FR: 'FR',
+  AE: 'AE',
+  QA: 'QA',
+  SA: 'SA',
+} as const;
+
 export interface BarberInput {
   /**
      * @minLength 2
      * @maxLength 100
      */
   name: string;
+  countryCode: BarberInputCountryCode;
   /**
      * @minLength 2
      * @maxLength 100
@@ -223,6 +296,19 @@ export interface AdminLoginInput {
   password: string;
 }
 
+/**
+ * @nullable
+ */
+export type BarberReviewCountryCode = typeof BarberReviewCountryCode[keyof typeof BarberReviewCountryCode] | null;
+
+
+export const BarberReviewCountryCode = {
+  FR: 'FR',
+  AE: 'AE',
+  QA: 'QA',
+  SA: 'SA',
+} as const;
+
 export type BarberReviewStatus = typeof BarberReviewStatus[keyof typeof BarberReviewStatus];
 
 
@@ -235,6 +321,8 @@ export const BarberReviewStatus = {
 export interface BarberReview {
   id: number;
   name: string;
+  /** @nullable */
+  countryCode: BarberReviewCountryCode;
   city: string;
   areas: string[];
   bio: string;
@@ -262,6 +350,16 @@ export interface BarberDecisionInput {
   status: BarberDecisionInputStatus;
 }
 
+export type BookingInputCountryCode = typeof BookingInputCountryCode[keyof typeof BookingInputCountryCode];
+
+
+export const BookingInputCountryCode = {
+  FR: 'FR',
+  AE: 'AE',
+  QA: 'QA',
+  SA: 'SA',
+} as const;
+
 export type BookingInputLocationMode = typeof BookingInputLocationMode[keyof typeof BookingInputLocationMode];
 
 
@@ -276,6 +374,7 @@ export interface BookingInput {
      * @maxLength 80
      */
   serviceName: string;
+  countryCode: BookingInputCountryCode;
   /**
      * @minLength 2
      * @maxLength 100
@@ -420,8 +519,19 @@ export interface BookingTracking {
 
 export type ListBarbersParams = {
 city?: string;
+countryCode?: ListBarbersCountryCode;
 search?: string;
 };
+
+export type ListBarbersCountryCode = typeof ListBarbersCountryCode[keyof typeof ListBarbersCountryCode];
+
+
+export const ListBarbersCountryCode = {
+  FR: 'FR',
+  AE: 'AE',
+  QA: 'QA',
+  SA: 'SA',
+} as const;
 
 export type GetBookingStatusParams = {
 bookingId: number;

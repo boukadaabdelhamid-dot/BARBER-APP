@@ -3,6 +3,7 @@ export const GPS_COVERAGE_RADIUS_KM = 30;
 
 export type BookingMatchRequest = {
   serviceName: string;
+  countryCode?: string | null;
   city: string;
   locationMode: "manual" | "gps";
   area: string;
@@ -14,6 +15,7 @@ export type BookingMatchRequest = {
 export type MatchableBarber = {
   id: number;
   name: string;
+  countryCode?: string | null;
   city: string;
   areas: string[];
   services: Array<{
@@ -78,6 +80,7 @@ export function selectBestAvailableBarber(
       excluded.has(barber.id) ||
       barber.status !== "active" ||
       !barber.isAvailable ||
+      (request.countryCode != null && barber.countryCode !== request.countryCode) ||
       normalize(barber.city) !== normalize(request.city)
     ) {
       continue;

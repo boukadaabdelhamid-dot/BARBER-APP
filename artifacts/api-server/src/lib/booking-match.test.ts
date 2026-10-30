@@ -87,6 +87,17 @@ test("rejecting a barber excludes them and selects the next available match", ()
   assert.equal(chosen?.barber.name, "البديل");
 });
 
+test("country matching never assigns a request to a barber in another country", () => {
+  const chosen = selectBestAvailableBarber(
+    [
+      barber({ id: 1, name: "حلاق الإمارات", countryCode: "AE" }),
+      barber({ id: 2, name: "حلاق فرنسا", countryCode: "FR" }),
+    ],
+    { ...request, countryCode: "FR" },
+  );
+  assert.equal(chosen?.barber.id, 2);
+});
+
 test("a request is retried only after the one-minute response window", () => {
   const assignedAt = new Date(1_000_000);
   assert.equal(

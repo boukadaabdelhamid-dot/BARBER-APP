@@ -46,7 +46,9 @@ import type {
   BookingTracking,
   GetBookingStatusParams,
   HealthStatus,
-  ListBarbersParams
+  ListBarbersParams,
+  PaymentCountry,
+  PaymentCountryUpdate
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -373,6 +375,107 @@ export const useCreateBarber = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getCreateBarberMutationOptions(options), queryClient);
     }
+
+export const getListPaymentCountriesUrl = () => {
+
+
+
+
+  return `/api/payment-countries`
+}
+
+/**
+ * @summary List supported countries and payment availability
+ */
+export const listPaymentCountries = async ( options?: Parameters<typeof customFetch>[1]): Promise<PaymentCountry[]> => {
+
+  return customFetch<PaymentCountry[]>(getListPaymentCountriesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPaymentCountriesQueryKey = () => {
+    return [
+    `/api/payment-countries`
+    ] as const;
+    }
+
+
+export const getListPaymentCountriesQueryOptions = <TData = Awaited<ReturnType<typeof listPaymentCountries>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPaymentCountries>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPaymentCountriesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPaymentCountries>>> = ({ signal }) => listPaymentCountries({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPaymentCountries>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListPaymentCountriesQueryResult = NonNullable<Awaited<ReturnType<typeof listPaymentCountries>>>
+export type ListPaymentCountriesQueryError = ErrorType<unknown>
+
+
+export function useListPaymentCountries<TData = Awaited<ReturnType<typeof listPaymentCountries>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPaymentCountries>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listPaymentCountries>>,
+          TError,
+          Awaited<ReturnType<typeof listPaymentCountries>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListPaymentCountries<TData = Awaited<ReturnType<typeof listPaymentCountries>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPaymentCountries>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listPaymentCountries>>,
+          TError,
+          Awaited<ReturnType<typeof listPaymentCountries>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListPaymentCountries<TData = Awaited<ReturnType<typeof listPaymentCountries>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPaymentCountries>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List supported countries and payment availability
+ */
+
+export function useListPaymentCountries<TData = Awaited<ReturnType<typeof listPaymentCountries>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPaymentCountries>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListPaymentCountriesQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetBarberUrl = (barberId: number,) => {
 
@@ -1913,5 +2016,195 @@ export const useModerateBarber = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getModerateBarberMutationOptions(options), queryClient);
+    }
+
+export const getListAdminPaymentCountriesUrl = () => {
+
+
+
+
+  return `/api/admin/payment-countries`
+}
+
+/**
+ * @summary List country payment settings
+ */
+export const listAdminPaymentCountries = async ( options?: Parameters<typeof customFetch>[1]): Promise<PaymentCountry[]> => {
+
+  return customFetch<PaymentCountry[]>(getListAdminPaymentCountriesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminPaymentCountriesQueryKey = () => {
+    return [
+    `/api/admin/payment-countries`
+    ] as const;
+    }
+
+
+export const getListAdminPaymentCountriesQueryOptions = <TData = Awaited<ReturnType<typeof listAdminPaymentCountries>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminPaymentCountries>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminPaymentCountriesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminPaymentCountries>>> = ({ signal }) => listAdminPaymentCountries({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminPaymentCountries>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListAdminPaymentCountriesQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminPaymentCountries>>>
+export type ListAdminPaymentCountriesQueryError = ErrorType<void>
+
+
+export function useListAdminPaymentCountries<TData = Awaited<ReturnType<typeof listAdminPaymentCountries>>, TError = ErrorType<void>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminPaymentCountries>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminPaymentCountries>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminPaymentCountries>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListAdminPaymentCountries<TData = Awaited<ReturnType<typeof listAdminPaymentCountries>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminPaymentCountries>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminPaymentCountries>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminPaymentCountries>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListAdminPaymentCountries<TData = Awaited<ReturnType<typeof listAdminPaymentCountries>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminPaymentCountries>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List country payment settings
+ */
+
+export function useListAdminPaymentCountries<TData = Awaited<ReturnType<typeof listAdminPaymentCountries>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminPaymentCountries>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListAdminPaymentCountriesQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateAdminPaymentCountryUrl = (countryCode: 'FR' | 'AE' | 'QA' | 'SA',) => {
+
+
+
+
+  return `/api/admin/payment-countries/${countryCode}`
+}
+
+/**
+ * @summary Enable or disable payments for one country
+ */
+export const updateAdminPaymentCountry = async (countryCode: 'FR' | 'AE' | 'QA' | 'SA',
+    paymentCountryUpdate: PaymentCountryUpdate, options?: Parameters<typeof customFetch>[1]): Promise<PaymentCountry> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PaymentCountry>(getUpdateAdminPaymentCountryUrl(countryCode),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(paymentCountryUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminPaymentCountryMutationKey = () => ['updateAdminPaymentCountry'] as const;
+
+export const getUpdateAdminPaymentCountryMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminPaymentCountry>>, TError,UpdateAdminPaymentCountryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminPaymentCountry>>, TError,UpdateAdminPaymentCountryMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAdminPaymentCountryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminPaymentCountry>>, UpdateAdminPaymentCountryMutationVariables> = (props) => {
+          const {countryCode,data} = props ?? {};
+
+          return  updateAdminPaymentCountry(countryCode,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminPaymentCountryMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminPaymentCountry>>>
+    export type UpdateAdminPaymentCountryMutationBody = BodyType<PaymentCountryUpdate>
+    export type UpdateAdminPaymentCountryMutationError = ErrorType<void>
+    export type UpdateAdminPaymentCountryMutationVariables = {countryCode: 'FR' | 'AE' | 'QA' | 'SA';data: BodyType<PaymentCountryUpdate>}
+
+    /**
+ * @summary Enable or disable payments for one country
+ */
+export const useUpdateAdminPaymentCountry = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminPaymentCountry>>, TError,UpdateAdminPaymentCountryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminPaymentCountry>>,
+        TError,
+        UpdateAdminPaymentCountryMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAdminPaymentCountryMutationOptions(options), queryClient);
     }
 

@@ -12,6 +12,7 @@ export type BarberService = {
 export const barbersTable = pgTable("barbers", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
+  countryCode: text("country_code"),
   city: text("city").notNull(),
   areas: text("areas").array().notNull(),
   bio: text("bio").notNull(),

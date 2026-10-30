@@ -12,6 +12,7 @@ import {
   ListBarbersResponse,
 } from "@workspace/api-zod";
 import { db, barbersTable, bookingsTable } from "@workspace/db";
+import { PAYMENT_COUNTRIES } from "../lib/payment-countries";
 import { hashPassword, normalizeEmail } from "../lib/password";
 import { findBestAvailableBarber } from "../lib/booking-dispatch";
 
@@ -29,6 +30,9 @@ router.get("/barbers", async (req, res): Promise<void> => {
   }
 
   const filters = [eq(barbersTable.status, "active")];
+  if (parsed.data.countryCode) {
+    filters.push(eq(barbersTable.countryCode, parsed.data.countryCode));
+  }
   if (parsed.data.city?.trim()) {
     filters.push(ilike(barbersTable.city, `%${parsed.data.city.trim()}%`));
   }
@@ -84,6 +88,13 @@ router.post("/barbers", async (req, res): Promise<void> => {
   }
 
   const { email: submittedEmail, password, ...profile } = parsed.data;
+  const country = PAYMENT_COUNTRIES.find(
+    (item) => item.countryCode === profile.countryCode,
+  );
+  if (!country) {
+    res.status(400).json({ error: "Unsupported country" });
+    return;
+  }
   const email = normalizeEmail(submittedEmail);
   const [existingEmail] = await db
     .select({ id: barbersTable.id })
@@ -103,6 +114,7 @@ router.post("/barbers", async (req, res): Promise<void> => {
       .insert(barbersTable)
       .values({
         ...profile,
+        currency: country.currency,
         email,
         passwordHash: await hashPassword(password),
         accessCodeHash,
@@ -148,6 +160,7 @@ router.post("/bookings", async (req, res): Promise<void> => {
 
   const match = await findBestAvailableBarber({
     serviceName: parsed.data.serviceName,
+    countryCode: parsed.data.countryCode,
     city: parsed.data.city,
     locationMode: parsed.data.locationMode,
     area,
@@ -168,6 +181,7 @@ router.post("/bookings", async (req, res): Promise<void> => {
     .insert(bookingsTable)
     .values({
       barberId: match.barber.id,
+      countryCode: parsed.data.countryCode,
       serviceId: match.service.id,
       serviceName: match.service.name,
       servicePrice: match.service.price,

@@ -3,6 +3,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 import {
   GetAdminSessionResponse,
+  ListAdminPaymentCountriesResponse,
   IssueBarberAccessCodeParams,
   IssueBarberAccessCodeResponse,
   ListPendingBarbersResponse,
@@ -12,8 +13,12 @@ import {
   ModerateBarberBody,
   ModerateBarberParams,
   ModerateBarberResponse,
+  UpdateAdminPaymentCountryBody,
+  UpdateAdminPaymentCountryParams,
+  UpdateAdminPaymentCountryResponse,
 } from "@workspace/api-zod";
-import { db, barbersTable } from "@workspace/db";
+import { db, barbersTable, paymentCountrySettingsTable } from "@workspace/db";
+import { getPaymentCountries, isPaymentCountryCode } from "../lib/payment-countries";
 
 const router: IRouter = Router();
 const ADMIN_COOKIE = "barberlink_admin";
@@ -189,6 +194,45 @@ router.get("/admin/barbers", async (req, res): Promise<void> => {
     .orderBy(asc(barbersTable.createdAt));
 
   res.json(ListPendingBarbersResponse.parse(barbers));
+});
+
+router.get("/admin/payment-countries", async (req, res): Promise<void> => {
+  if (!requireAdmin(req, res)) return;
+  res.setHeader("Cache-Control", "no-store");
+  res.json(ListAdminPaymentCountriesResponse.parse(await getPaymentCountries()));
+});
+
+router.patch("/admin/payment-countries/:countryCode", async (req, res): Promise<void> => {
+  if (!requireAdmin(req, res)) return;
+
+  const params = UpdateAdminPaymentCountryParams.safeParse(req.params);
+  if (!params.success || !isPaymentCountryCode(params.data?.countryCode ?? "")) {
+    res.status(400).json({ error: params.success ? "Unsupported country" : params.error.message });
+    return;
+  }
+
+  const parsed = UpdateAdminPaymentCountryBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  await db
+    .insert(paymentCountrySettingsTable)
+    .values({ countryCode: params.data.countryCode, enabled: parsed.data.enabled })
+    .onConflictDoUpdate({
+      target: paymentCountrySettingsTable.countryCode,
+      set: { enabled: parsed.data.enabled, updatedAt: new Date() },
+    });
+
+  const country = (await getPaymentCountries()).find(
+    (item) => item.countryCode === params.data.countryCode,
+  );
+  if (!country) {
+    res.status(500).json({ error: "Country setting could not be loaded" });
+    return;
+  }
+  res.json(UpdateAdminPaymentCountryResponse.parse(country));
 });
 
 router.post("/admin/barbers/:barberId/access-code", async (req, res): Promise<void> => {

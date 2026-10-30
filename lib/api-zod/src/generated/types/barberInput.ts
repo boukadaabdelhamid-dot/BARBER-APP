@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { BarberInputCountryCode } from './barberInputCountryCode';
 import type { BarberServiceInput } from './barberServiceInput';
 
 export interface BarberInput {
@@ -13,6 +14,7 @@ export interface BarberInput {
      * @maxLength 100
      */
   name: string;
+  countryCode: BarberInputCountryCode;
   /**
      * @minLength 2
      * @maxLength 100

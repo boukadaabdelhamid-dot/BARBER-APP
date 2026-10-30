@@ -6,6 +6,7 @@ import { barbersTable } from "./barbers";
 export const bookingsTable = pgTable("bookings", {
   id: serial("id").primaryKey(),
   barberId: integer("barber_id").notNull().references(() => barbersTable.id),
+  countryCode: text("country_code"),
   serviceId: text("service_id").notNull(),
   serviceName: text("service_name").notNull(),
   servicePrice: real("service_price").notNull(),

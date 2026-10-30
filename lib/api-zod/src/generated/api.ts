@@ -22,12 +22,14 @@ export const HealthCheckResponse = zod.object({
  */
 export const ListBarbersQueryParams = zod.object({
   "city": zod.coerce.string().optional(),
+  "countryCode": zod.enum(['FR', 'AE', 'QA', 'SA']).optional(),
   "search": zod.coerce.string().optional()
 })
 
 export const ListBarbersResponseItem = zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
+  "countryCode": zod.union([zod.literal('FR'),zod.literal('AE'),zod.literal('QA'),zod.literal('SA'),zod.literal(null)]).nullable(),
   "city": zod.string(),
   "areas": zod.array(zod.string()),
   "bio": zod.string(),
@@ -95,6 +97,7 @@ export const createBarberBodyServicesItemPriceMax = 10000;
 
 export const CreateBarberBody = zod.object({
   "name": zod.string().min(createBarberBodyNameMin).max(createBarberBodyNameMax),
+  "countryCode": zod.enum(['FR', 'AE', 'QA', 'SA']),
   "city": zod.string().min(createBarberBodyCityMin).max(createBarberBodyCityMax),
   "areas": zod.array(zod.string().min(createBarberBodyAreasItemMin).max(createBarberBodyAreasItemMax)).min(1),
   "bio": zod.string().min(createBarberBodyBioMin).max(createBarberBodyBioMax),
@@ -125,6 +128,20 @@ export const CreateBarberResponse = zod.object({
 
 
 /**
+ * @summary List supported countries and payment availability
+ */
+export const ListPaymentCountriesResponseItem = zod.object({
+  "countryCode": zod.enum(['FR', 'AE', 'QA', 'SA']),
+  "countryName": zod.string(),
+  "currency": zod.enum(['EUR', 'AED', 'QAR', 'SAR']),
+  "enabled": zod.boolean(),
+  "providerReady": zod.boolean(),
+  "acceptingPayments": zod.boolean()
+})
+export const ListPaymentCountriesResponse = zod.array(ListPaymentCountriesResponseItem)
+
+
+/**
  * @summary Get a barber profile
  */
 export const GetBarberParams = zod.object({
@@ -134,6 +151,7 @@ export const GetBarberParams = zod.object({
 export const GetBarberResponse = zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
+  "countryCode": zod.union([zod.literal('FR'),zod.literal('AE'),zod.literal('QA'),zod.literal('SA'),zod.literal(null)]).nullable(),
   "city": zod.string(),
   "areas": zod.array(zod.string()),
   "bio": zod.string(),
@@ -361,6 +379,7 @@ export const createBookingBodyNoteMax = 500;
 
 export const CreateBookingBody = zod.object({
   "serviceName": zod.string().min(createBookingBodyServiceNameMin).max(createBookingBodyServiceNameMax),
+  "countryCode": zod.enum(['FR', 'AE', 'QA', 'SA']),
   "city": zod.string().min(createBookingBodyCityMin).max(createBookingBodyCityMax),
   "locationMode": zod.enum(['manual', 'gps']),
   "customerName": zod.string().min(createBookingBodyCustomerNameMin).max(createBookingBodyCustomerNameMax),
@@ -457,6 +476,7 @@ export const LogoutAdminResponse = zod.object({
 export const ListPendingBarbersResponseItem = zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
+  "countryCode": zod.union([zod.literal('FR'),zod.literal('AE'),zod.literal('QA'),zod.literal('SA'),zod.literal(null)]).nullable(),
   "city": zod.string(),
   "areas": zod.array(zod.string()),
   "bio": zod.string(),
@@ -510,6 +530,7 @@ export const ModerateBarberBody = zod.object({
 export const ModerateBarberResponse = zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
+  "countryCode": zod.union([zod.literal('FR'),zod.literal('AE'),zod.literal('QA'),zod.literal('SA'),zod.literal(null)]).nullable(),
   "city": zod.string(),
   "areas": zod.array(zod.string()),
   "bio": zod.string(),
@@ -527,6 +548,41 @@ export const ModerateBarberResponse = zod.object({
   "price": zod.number()
 })),
   "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List country payment settings
+ */
+export const ListAdminPaymentCountriesResponseItem = zod.object({
+  "countryCode": zod.enum(['FR', 'AE', 'QA', 'SA']),
+  "countryName": zod.string(),
+  "currency": zod.enum(['EUR', 'AED', 'QAR', 'SAR']),
+  "enabled": zod.boolean(),
+  "providerReady": zod.boolean(),
+  "acceptingPayments": zod.boolean()
+})
+export const ListAdminPaymentCountriesResponse = zod.array(ListAdminPaymentCountriesResponseItem)
+
+
+/**
+ * @summary Enable or disable payments for one country
+ */
+export const UpdateAdminPaymentCountryParams = zod.object({
+  "countryCode": zod.enum(['FR', 'AE', 'QA', 'SA'])
+})
+
+export const UpdateAdminPaymentCountryBody = zod.object({
+  "enabled": zod.boolean()
+})
+
+export const UpdateAdminPaymentCountryResponse = zod.object({
+  "countryCode": zod.enum(['FR', 'AE', 'QA', 'SA']),
+  "countryName": zod.string(),
+  "currency": zod.enum(['EUR', 'AED', 'QAR', 'SAR']),
+  "enabled": zod.boolean(),
+  "providerReady": zod.boolean(),
+  "acceptingPayments": zod.boolean()
 })
 
 

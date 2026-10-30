@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { BookingInputCountryCode } from './bookingInputCountryCode';
 import type { BookingInputLocationMode } from './bookingInputLocationMode';
 
 export interface BookingInput {
@@ -13,6 +14,7 @@ export interface BookingInput {
      * @maxLength 80
      */
   serviceName: string;
+  countryCode: BookingInputCountryCode;
   /**
      * @minLength 2
      * @maxLength 100

@@ -5,12 +5,15 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { BarberCountryCode } from './barberCountryCode';
 import type { BarberService } from './barberService';
 import type { BarberStatus } from './barberStatus';
 
 export interface Barber {
   id: number;
   name: string;
+  /** @nullable */
+  countryCode: BarberCountryCode;
   city: string;
   areas: string[];
   bio: string;

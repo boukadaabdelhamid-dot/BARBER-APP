@@ -18,6 +18,8 @@ tags:
     description: Barber booking management
   - name: admin
     description: Protected barber profile review
+  - name: payments
+    description: Country-specific payment availability
 paths:
   /healthz:
     get:
@@ -42,6 +44,10 @@ paths:
           in: query
           required: false
           schema: { type: string }
+        - name: countryCode
+          in: query
+          required: false
+          schema: { type: string, enum: [FR, AE, QA, SA] }
         - name: search
           in: query
           required: false
@@ -72,6 +78,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BarberSubmission"
+  /payment-countries:
+    get:
+      operationId: listPaymentCountries
+      tags: [payments]
+      summary: List supported countries and payment availability
+      responses:
+        "200":
+          description: Supported payment countries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PaymentCountry"
   /barbers/{barberId}:
     get:
       operationId: getBarber
@@ -411,6 +431,49 @@ paths:
           description: Pending profile not found
         "409":
           description: Profile was already reviewed
+  /admin/payment-countries:
+    get:
+      operationId: listAdminPaymentCountries
+      tags: [admin]
+      summary: List country payment settings
+      responses:
+        "200":
+          description: Country payment settings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PaymentCountry"
+        "401":
+          description: Admin authentication required
+  /admin/payment-countries/{countryCode}:
+    patch:
+      operationId: updateAdminPaymentCountry
+      tags: [admin]
+      summary: Enable or disable payments for one country
+      parameters:
+        - name: countryCode
+          in: path
+          required: true
+          schema: { type: string, enum: [FR, AE, QA, SA] }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentCountryUpdate"
+      responses:
+        "200":
+          description: Updated country payment setting
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentCountry"
+        "400":
+          description: Invalid country or setting
+        "401":
+          description: Admin authentication required
 components:
   schemas:
     HealthStatus:
@@ -420,6 +483,26 @@ components:
           type: string
       required:
         - status
+    PaymentCountry:
+      type: object
+      required: [countryCode, countryName, currency, enabled, providerReady, acceptingPayments]
+      properties:
+        countryCode: { type: string, enum: [FR, AE, QA, SA] }
+        countryName: { type: string }
+        currency: { type: string, enum: [EUR, AED, QAR, SAR] }
+        enabled: { type: boolean }
+        providerReady: { type: boolean }
+        acceptingPayments: { type: boolean }
+    PaymentCountryUpdate:
+      type: object
+      required: [enabled]
+      properties:
+        enabled: { type: boolean }
+    PaymentCountryParams:
+      type: object
+      required: [countryCode]
+      properties:
+        countryCode: { type: string, enum: [FR, AE, QA, SA] }
     BarberService:
       type: object
       required: [id, name, durationMinutes, price]
@@ -430,10 +513,11 @@ components:
         price: { type: number }
     Barber:
       type: object
-      required: [id, name, city, areas, bio, rating, reviewCount, travelFee, currency, services, phone, status, isAvailable]
+      required: [id, name, countryCode, city, areas, bio, rating, reviewCount, travelFee, currency, services, phone, status, isAvailable]
       properties:
         id: { type: integer }
         name: { type: string }
+        countryCode: { type: ["string", "null"], enum: [FR, AE, QA, SA, null] }
         city: { type: string }
         areas:
           type: array
@@ -461,9 +545,10 @@ components:
         price: { type: number, minimum: 0, maximum: 10000 }
     BarberInput:
       type: object
-      required: [name, city, areas, bio, phone, email, password, travelFee, currency, services]
+      required: [name, countryCode, city, areas, bio, phone, email, password, travelFee, currency, services]
       properties:
         name: { type: string, minLength: 2, maxLength: 100 }
+        countryCode: { type: string, enum: [FR, AE, QA, SA] }
         city: { type: string, minLength: 2, maxLength: 100 }
         areas:
           type: array
@@ -549,10 +634,11 @@ components:
         password: { type: string, minLength: 1, maxLength: 512 }
     BarberReview:
       type: object
-      required: [id, name, city, areas, bio, rating, reviewCount, travelFee, currency, services, phone, status, createdAt]
+      required: [id, name, countryCode, city, areas, bio, rating, reviewCount, travelFee, currency, services, phone, status, createdAt]
       properties:
         id: { type: integer }
         name: { type: string }
+        countryCode: { type: ["string", "null"], enum: [FR, AE, QA, SA, null] }
         city: { type: string }
         areas:
           type: array
@@ -577,9 +663,10 @@ components:
         status: { type: string, enum: [active, rejected] }
     BookingInput:
       type: object
-      required: [serviceName, city, locationMode, customerName, customerPhone, date, time]
+      required: [serviceName, countryCode, city, locationMode, customerName, customerPhone, date, time]
       properties:
         serviceName: { type: string, minLength: 2, maxLength: 80 }
+        countryCode: { type: string, enum: [FR, AE, QA, SA] }
         city: { type: string, minLength: 2, maxLength: 100 }
         locationMode: { type: string, enum: [manual, gps] }
         customerName: { type: string, minLength: 2, maxLength: 100 }

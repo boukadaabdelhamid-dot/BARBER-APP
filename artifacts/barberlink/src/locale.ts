@@ -153,6 +153,25 @@ Object.assign(translations, {
 });
 
 export function getLocale(): Locale { return activeLocale; }
+const countryLabels: Record<Locale, Record<string, string>> = {
+  ar: {
+    FR: 'فرنسا',
+    AE: 'الإمارات العربية المتحدة (دبي)',
+    QA: 'قطر',
+    SA: 'السعودية',
+  },
+  fr: {
+    FR: 'France',
+    AE: 'Émirats arabes unis (Dubaï)',
+    QA: 'Qatar',
+    SA: 'Arabie saoudite',
+  },
+};
+
+export function countryLabel(countryCode: string, fallback?: string): string {
+  return countryLabels[getLocale()][countryCode.toUpperCase()] ?? fallback ?? countryCode;
+}
+
 export function t(source: string): string {
   const exact = translations[source];
   if (activeLocale === 'ar') return source;

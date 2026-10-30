@@ -84,7 +84,7 @@ import { GoogleAuthButton } from '@/components/google-auth-button';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
-import { getLocale, LanguageControl, useLocale } from './locale';
+import { countryLabel, getLocale, LanguageControl, useLocale } from './locale';
 
 const queryClient = new QueryClient();
 
@@ -509,7 +509,7 @@ function Home() {
               >
                 <option value="">اختر الدولة</option>
                 {(countriesQuery.data ?? []).map((country) => (
-                  <option key={country.countryCode} value={country.countryCode}>{country.countryName}</option>
+                  <option key={country.countryCode} value={country.countryCode}>{countryLabel(country.countryCode, country.countryName)}</option>
                 ))}
               </select>
             </label>
@@ -568,7 +568,7 @@ function Home() {
           )}
           <div className="results-meta discover-results-meta">
             <span><strong>{listQuery.isLoading ? '—' : (mode === 'suggest' && suggestionReady ? visibleMatches.length : matchingBarbers.length)}</strong> نتيجة مناسبة</span>
-            {countryCode && city && serviceName && <span className="criteria-caption">{countriesQuery.data?.find((country) => country.countryCode === countryCode)?.countryName} · {city}{area ? ` · ${area}` : ''} · {serviceName}</span>}
+            {countryCode && city && serviceName && <span className="criteria-caption">{countryLabel(countryCode, countriesQuery.data?.find((country) => country.countryCode === countryCode)?.countryName)} · {city}{area ? ` · ${area}` : ''} · {serviceName}</span>}
           </div>
           {health.data?.status && <span className="health-state" data-testid="status-api">الخدمة متصلة</span>}
           <p className="coverage-disclaimer" data-testid="text-coverage-disclaimer"><MapPin aria-hidden="true" /> التغطية مبنية على مناطق الخدمة المسجلة لدى الحلاقين، وليست قياسًا للمسافة أو التوفر الفوري.</p>
@@ -991,7 +991,7 @@ function BarberModal({
                       const preference = paymentCountry.enabled ? 'إعداد الدولة مفعّل' : 'إعداد الدولة غير مفعّل';
                       const readiness = paymentCountry.providerReady ? 'مزود الدفع جاهز' : 'مزود الدفع غير مهيأ بعد';
                       const accepting = paymentCountry.acceptingPayments ? 'الدفع الإلكتروني متاح' : 'الدفع الإلكتروني غير متاح';
-                      return `${paymentCountry.countryName} · ${preference} · ${readiness} · ${accepting}. لا يتم تحصيل أي مبلغ الآن.`;
+                      return `${countryLabel(paymentCountry.countryCode, paymentCountry.countryName)} · ${preference} · ${readiness} · ${accepting}. لا يتم تحصيل أي مبلغ الآن.`;
                     })()}
                 </span>
               </div>
@@ -1156,7 +1156,7 @@ function Join() {
                     data-testid="select-barber-country"
                   >
                     <option value="">اختر الدولة</option>
-                    {(countriesQuery.data ?? []).map((country) => <option key={country.countryCode} value={country.countryCode}>{country.countryName}</option>)}
+                    {(countriesQuery.data ?? []).map((country) => <option key={country.countryCode} value={country.countryCode}>{countryLabel(country.countryCode, country.countryName)}</option>)}
                   </select>
                   {countriesQuery.isLoading && <small role="status">جارٍ تحميل الدول…</small>}
                   {countriesQuery.isError && (
@@ -1316,7 +1316,7 @@ function Admin() {
       { countryCode: country.countryCode, data: { enabled } },
       {
         onSuccess: async (updatedCountry) => {
-          setPaymentFeedback(updatedCountry.countryName);
+          setPaymentFeedback(updatedCountry.countryCode);
           await Promise.all([
             queryClient.invalidateQueries({ queryKey: getListAdminPaymentCountriesQueryKey() }),
             queryClient.invalidateQueries({ queryKey: getListPaymentCountriesQueryKey() }),
@@ -1459,7 +1459,7 @@ function Admin() {
                 </div>
                 <CreditCard aria-hidden="true" />
               </div>
-              {paymentFeedback && <div className="payment-feedback" role="status" data-testid="status-payment-country-feedback"><Check size={16} />{paymentFeedback}: {getLocale() === 'ar' ? 'تم حفظ تفضيل الإعداد. لم يتم تفعيل تحصيل المدفوعات.' : 'Payment preference saved. Payment collection has not been enabled.'}</div>}
+              {paymentFeedback && <div className="payment-feedback" role="status" data-testid="status-payment-country-feedback"><Check size={16} />{countryLabel(paymentFeedback)}: {getLocale() === 'ar' ? 'تم حفظ تفضيل الإعداد. لم يتم تفعيل تحصيل المدفوعات.' : 'Payment preference saved. Payment collection has not been enabled.'}</div>}
               {paymentError && <div className="admin-alert admin-alert-wide" role="alert" data-testid="status-payment-country-error"><AlertCircle size={17} />{paymentError}</div>}
               {paymentCountries.isLoading ? (
                 <div className="payment-country-skeleton" aria-label="جارٍ تحميل إعدادات الدول"><span /><span /></div>
@@ -1475,7 +1475,7 @@ function Admin() {
                   ) : (paymentCountries.data ?? []).map((country) => (
                     <article className="payment-country-row" key={country.countryCode} data-testid={`card-payment-country-${country.countryCode}`}>
                       <div className="payment-country-copy">
-                        <strong>{country.countryName}</strong>
+                        <strong>{countryLabel(country.countryCode, country.countryName)}</strong>
                         <span>{country.countryCode} · {country.currency}</span>
                       </div>
                       <div className="payment-readiness">
@@ -1490,7 +1490,7 @@ function Admin() {
                           checked={country.enabled}
                           disabled={updatePaymentCountry.isPending}
                           onChange={(event) => savePaymentPreference(country, event.target.checked)}
-                          aria-label={`${country.enabled ? 'تعطيل' : 'تفعيل'} تفضيل الدفع في ${country.countryName}`}
+                          aria-label={`${country.enabled ? 'تعطيل' : 'تفعيل'} تفضيل الدفع في ${countryLabel(country.countryCode, country.countryName)}`}
                           data-testid={`toggle-payment-country-${country.countryCode}`}
                         />
                         <span aria-hidden="true" />

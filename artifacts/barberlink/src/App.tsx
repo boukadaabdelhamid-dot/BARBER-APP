@@ -181,6 +181,9 @@ function Welcome() {
                   <ArrowLeft className="welcome-option-arrow" aria-hidden="true" />
                 </button>
               </div>
+              <Link href="/barber" className="welcome-login-link" data-testid="link-welcome-barber-login">
+                دخول الحلاق
+              </Link>
             </>
           ) : (
             <>
@@ -1996,6 +1999,21 @@ function LanguageEntryGate({
 function App() {
   const { locale, setLocale } = useLocale();
   const [hasEntered, setHasEntered] = useState(false);
+  const chooseLocale = (nextLocale: 'ar' | 'fr') => {
+    setLocale(nextLocale);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('lang');
+
+    const basePath = new URL(import.meta.env.BASE_URL, window.location.origin).pathname.replace(/\/+$/, '');
+    const relativePath = basePath && (url.pathname === basePath || url.pathname.startsWith(`${basePath}/`))
+      ? url.pathname.slice(basePath.length) || '/'
+      : url.pathname;
+    if (relativePath.replace(/\/+$/, '') === '/barber') {
+      url.pathname = `${basePath}/` || '/';
+    }
+    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+    setHasEntered(true);
+  };
   useEffect(() => {
     document.documentElement.lang = locale === 'ar' ? 'ar' : 'fr';
     document.documentElement.dir = locale === 'ar' ? 'rtl' : 'ltr';
@@ -2003,7 +2021,7 @@ function App() {
   return (
     <div className="app-locale-root" data-locale={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       {!hasEntered ? (
-        <LanguageEntryGate locale={locale} onChoose={(nextLocale) => { setLocale(nextLocale); setHasEntered(true); }} />
+        <LanguageEntryGate locale={locale} onChoose={chooseLocale} />
       ) : (
         <QueryClientProvider client={queryClient}>
           <LanguageControl />

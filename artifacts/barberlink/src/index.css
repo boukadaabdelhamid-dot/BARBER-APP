@@ -149,6 +149,23 @@ body { min-width: 320px; }
 .welcome-back svg { width:15px;height:15px; }
 .welcome-footer { display:flex;justify-content:center;align-items:center;gap:8px;margin-top:29px;color:#77847b;font-size:11px; }
 .welcome-footer svg { width:16px;height:16px;color:#51806a; }
+.welcome-login-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  margin-top: 17px;
+  padding: 0 16px;
+  border: 1px solid #d9ded4;
+  border-radius: 8px;
+  color: #365d4d;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background .18s, border-color .18s;
+}
+.welcome-login-link:hover { background: #e8eee5; border-color: #9eb4a4; }
+.welcome-login-link:focus-visible { outline: 3px solid rgba(40, 88, 76, .3); outline-offset: 3px; }
 .site-shell { min-height: 100dvh; background: #f5f2e9; }
 .topbar { height: 78px; display:flex; align-items:center; justify-content:space-between; max-width:1240px; padding:0 34px; margin:auto; }
 .brand { display:flex; align-items:center; gap:11px; color:#20383a; text-decoration:none; font:800 22px 'Manrope',sans-serif; letter-spacing:-1px; }

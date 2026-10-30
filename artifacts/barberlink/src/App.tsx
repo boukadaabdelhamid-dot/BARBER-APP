@@ -77,12 +77,13 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
+import { getLocale, LanguageControl, useLocale } from './locale';
 
 const queryClient = new QueryClient();
 
 function money(amount: number, currency: string) {
   try {
-    return new Intl.NumberFormat('ar', {
+    return new Intl.NumberFormat(getLocale() === 'ar' ? 'ar' : 'fr-FR', {
       style: 'currency',
       currency: currency || 'USD',
       maximumFractionDigits: 2,
@@ -96,7 +97,7 @@ function dateLabel(value: string | Date) {
   if (!value) return '';
   const dateValue = value instanceof Date ? value.toISOString().slice(0, 10) : value.slice(0, 10);
   const date = new Date(`${dateValue}T12:00:00`);
-  return new Intl.DateTimeFormat('ar', { dateStyle: 'long' }).format(date);
+  return new Intl.DateTimeFormat(getLocale() === 'ar' ? 'ar' : 'fr-FR', { dateStyle: 'long' }).format(date);
 }
 
 function Brand() {
@@ -111,7 +112,7 @@ function Brand() {
 function SiteHeader() {
   const supportWhatsapp = String(import.meta.env.VITE_SUPPORT_WHATSAPP ?? '').replace(/\D/g, '');
   return (
-    <header className="topbar" dir="rtl">
+    <header className="topbar">
       <Brand />
       <nav className="nav-links" aria-label="التنقل الرئيسي">
         <Link href="/discover" data-testid="link-discover">اكتشف الحلاقين</Link>
@@ -134,7 +135,7 @@ function Welcome() {
   const supportWhatsapp = String(import.meta.env.VITE_SUPPORT_WHATSAPP ?? '').replace(/\D/g, '');
 
   return (
-    <div className="welcome-shell" dir="rtl">
+    <div className="welcome-shell">
       <header className="welcome-header">
         <Brand />
         <span className="welcome-header-note">حلاقة قريبة منك، بخطوات أسهل</span>
@@ -251,7 +252,7 @@ function LoadingCards() {
 
 function ErrorMessage({ onRetry, children }: { onRetry: () => void; children: ReactNode }) {
   return (
-    <div className="status-banner error" role="alert" dir="rtl" data-testid="status-load-error">
+    <div className="status-banner error" role="alert" data-testid="status-load-error">
       <AlertCircle aria-hidden="true" />
       <span style={{ flex: 1 }}>{children}</span>
       <button className="retry-button" onClick={onRetry} type="button" data-testid="button-retry">
@@ -277,7 +278,7 @@ function BarberCard({
   onBook: (id: number) => void;
 }) {
   return (
-    <article className="barber-card" dir="rtl" data-testid={`card-barber-${barber.id}`}>
+    <article className="barber-card" data-testid={`card-barber-${barber.id}`}>
       <div className="barber-photo">
         <BarberImage barber={barber} />
         <span className={`availability ${barber.isAvailable ? 'is-available' : 'is-offline'}`}>
@@ -289,7 +290,7 @@ function BarberCard({
           <h3 data-testid={`text-barber-name-${barber.id}`}>{barber.name}</h3>
           {barber.reviewCount > 0 && (
             <span className="rating" data-testid={`text-rating-${barber.id}`}>
-              <Star aria-hidden="true" /> {barber.rating.toFixed(1)} ({barber.reviewCount})
+              <Star aria-hidden="true" /> {new Intl.NumberFormat(getLocale() === 'ar' ? 'ar' : 'fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(barber.rating)} ({new Intl.NumberFormat(getLocale() === 'ar' ? 'ar' : 'fr-FR').format(barber.reviewCount)})
             </span>
           )}
         </div>
@@ -394,7 +395,7 @@ function Home() {
   };
 
   return (
-    <div className="site-shell" dir="rtl">
+    <div className="site-shell">
       <SiteHeader />
       <main className="page-wrap discover-page">
         <section className="discover-intro">
@@ -552,14 +553,14 @@ function Home() {
             </>
           )}
         </section>
-        <section className="trust-strip" aria-label="مزايا الخدمة" dir="rtl">
+        <section className="trust-strip" aria-label="مزايا الخدمة">
           <div className="trust-copy"><ShieldCheck aria-hidden="true" /> ملفات الحلاقين تُراجع قبل ظهورها</div>
           <div className="trust-stats">
             <span><strong>طلب مباشر</strong> والحلاق يؤكد الموعد</span>
             <span><strong>نطاق واضح</strong> حسب مناطق التغطية</span>
           </div>
         </section>
-        <footer className="footer discover-footer" dir="rtl">
+        <footer className="footer discover-footer">
           <div className="footer-brand"><span className="brand-mark"><Scissors aria-hidden="true" /></span> BarberLink</div>
           <span>كل طلب ينتظر رد الحلاق قبل أن يصبح موعدًا مؤكدًا.</span>
           <span className="discover-footer-links">
@@ -635,7 +636,9 @@ function BarberModal({
   const minDate = new Date().toLocaleDateString('en-CA');
   const whatsappPhone = confirmation?.barberPhone.replace(/\D/g, '') ?? '';
   const whatsappMessage = confirmation
-    ? `مرحبًا ${confirmation.barberName}، أرسلت طلب الموعد رقم ${confirmation.id}.\nالخدمة: ${confirmation.serviceName}\nالتاريخ: ${dateLabel(confirmation.date)} الساعة ${confirmation.time}\nالاسم: ${contactDetails?.name ?? ''}\nهاتف التواصل: ${contactDetails?.phone ?? ''}\nالمنطقة: ${contactDetails?.area ?? ''}\nأرجو تأكيد الموعد.`
+    ? getLocale() === 'ar'
+      ? `مرحبًا ${confirmation.barberName}، أرسلت طلب الموعد رقم ${confirmation.id}.\nالخدمة: ${confirmation.serviceName}\nالتاريخ: ${dateLabel(confirmation.date)} الساعة ${confirmation.time}\nالاسم: ${contactDetails?.name ?? ''}\nهاتف التواصل: ${contactDetails?.phone ?? ''}\nالمنطقة: ${contactDetails?.area ?? ''}\nأرجو تأكيد الموعد.`
+      : `Bonjour ${confirmation.barberName}, j’ai envoyé la demande de rendez-vous n° ${confirmation.id}.\nService : ${confirmation.serviceName}\nDate : ${dateLabel(confirmation.date)} à ${confirmation.time}\nNom : ${contactDetails?.name ?? ''}\nTéléphone : ${contactDetails?.phone ?? ''}\nQuartier : ${contactDetails?.area ?? ''}\nMerci de confirmer le rendez-vous.`
     : '';
   const requestedService = barber?.services.find((service) => service.id === selectedServiceId) ?? barber?.services[0];
   const saveTrackingReference = (bookingId: number, token: string) => {
@@ -721,7 +724,7 @@ function BarberModal({
   };
 
   return (
-    <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }} dir="rtl">
+    <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <section className="modal" role="dialog" aria-modal="true" aria-label={confirmation ? 'تأكيد طلب الحجز' : mode === 'booking' ? 'طلب موعد' : 'ملف الحلاق'}>
         <button className="modal-close" type="button" onClick={onClose} aria-label="إغلاق" data-testid="button-close-modal"><X /></button>
         {isLoading ? (
@@ -740,7 +743,7 @@ function BarberModal({
               <div>السعر: <strong>{money(confirmation.servicePrice, confirmation.currency)}</strong> · التنقل: <strong>{money(confirmation.travelFee, confirmation.currency)}</strong></div>
               <div>التاريخ والوقت: <strong>{dateLabel(confirmation.date)}، {confirmation.time}</strong></div>
               <div>رقم الطلب: <strong>#{confirmation.id}</strong></div>
-            <div>الحالة: <strong>تم إرسال الطلب · المحاولة {confirmation.attemptCount.toLocaleString('ar')}</strong></div>
+            <div>الحالة: <strong>تم إرسال الطلب · المحاولة {confirmation.attemptCount.toLocaleString(getLocale() === 'ar' ? 'ar' : 'fr-FR')}</strong></div>
             </div>
             <Link href="/my-bookings" className="submit-button" onClick={onClose} data-testid="link-track-booking">متابعة حالة الطلب</Link>
             {whatsappPhone && (
@@ -933,7 +936,7 @@ function Join() {
   };
 
   return (
-    <div className="site-shell" dir="rtl">
+    <div className="site-shell">
       <SiteHeader />
       <main className="page-wrap">
         <div className="page-heading">
@@ -946,9 +949,9 @@ function Join() {
             <div className="success-mark"><Check aria-hidden="true" /></div>
             <div className="eyebrow">استلمنا ملفك</div>
             <h2>خطوتك التالية وصلت إلينا</h2>
-            <p>{success.message || 'شكرًا لانضمامك. سيراجع فريقنا معلوماتك قبل إظهار ملفك للعملاء.'}</p>
+            <p>شكرًا لانضمامك. سيراجع فريقنا معلوماتك قبل إظهار ملفك للعملاء.</p>
             <div className="confirmation-details">رقم الطلب: <strong>#{success.id}</strong><br />الحالة: <strong>قيد المراجعة</strong></div>
-            <div className="access-code-panel" dir="rtl">
+            <div className="access-code-panel">
               <strong>رمز دخولك إلى لوحة الحلاق</strong>
               <code>{success.accessCode}</code>
               <p>استخدم بريدك وكلمة المرور للدخول. احتفظ برقم الملف والرمز الاحتياطي؛ لن نعرض الرمز مرة أخرى، وستحتاج إليه إذا نسيت كلمة المرور.</p>
@@ -1088,7 +1091,7 @@ function Join() {
             </aside>
           </div>
         )}
-        <footer className="footer" dir="rtl">
+        <footer className="footer">
           <div className="footer-brand"><span className="brand-mark"><Scissors aria-hidden="true" /></span> BarberLink</div>
           <Link href="/discover" data-testid="link-join-footer-home"><ArrowRight size={14} /> العودة للاكتشاف</Link>
         </footer>
@@ -1147,7 +1150,7 @@ function Admin() {
       { countryCode: country.countryCode, data: { enabled } },
       {
         onSuccess: async (updatedCountry) => {
-          setPaymentFeedback(`${updatedCountry.countryName}: تم حفظ تفضيل الإعداد. لم يتم تفعيل تحصيل المدفوعات.`);
+          setPaymentFeedback(updatedCountry.countryName);
           await Promise.all([
             queryClient.invalidateQueries({ queryKey: getListAdminPaymentCountriesQueryKey() }),
             queryClient.invalidateQueries({ queryKey: getListPaymentCountriesQueryKey() }),
@@ -1216,7 +1219,7 @@ function Admin() {
   };
 
   return (
-    <div className="admin-shell" dir="rtl">
+    <div className="admin-shell">
       <header className="admin-topbar">
         <Brand />
         <div className="admin-topbar-side">
@@ -1277,7 +1280,7 @@ function Admin() {
               </div>
               <div className="admin-count-card">
                 <span className="count-label">قيد المراجعة</span>
-                <strong>{pending.isLoading ? '—' : (pending.data?.length ?? 0).toLocaleString('ar')}</strong>
+                <strong>{pending.isLoading ? '—' : (pending.data?.length ?? 0).toLocaleString(getLocale() === 'ar' ? 'ar' : 'fr-FR')}</strong>
                 <span className="count-note"><span className="team-dot" /> طلبات جديدة</span>
               </div>
             </div>
@@ -1290,7 +1293,7 @@ function Admin() {
                 </div>
                 <CreditCard aria-hidden="true" />
               </div>
-              {paymentFeedback && <div className="payment-feedback" role="status" data-testid="status-payment-country-feedback"><Check size={16} />{paymentFeedback}</div>}
+              {paymentFeedback && <div className="payment-feedback" role="status" data-testid="status-payment-country-feedback"><Check size={16} />{paymentFeedback}: {getLocale() === 'ar' ? 'تم حفظ تفضيل الإعداد. لم يتم تفعيل تحصيل المدفوعات.' : 'Payment preference saved. Payment collection has not been enabled.'}</div>}
               {paymentError && <div className="admin-alert admin-alert-wide" role="alert" data-testid="status-payment-country-error"><AlertCircle size={17} />{paymentError}</div>}
               {paymentCountries.isLoading ? (
                 <div className="payment-country-skeleton" aria-label="جارٍ تحميل إعدادات الدول"><span /><span /></div>
@@ -1495,7 +1498,7 @@ function CustomerBookings() {
   useEffect(() => setReferences(readCustomerBookings()), []);
 
   return (
-    <div className="site-shell" dir="rtl">
+    <div className="site-shell">
       <SiteHeader />
       <main className="page-wrap">
         <div className="page-heading">
@@ -1562,7 +1565,7 @@ function CustomerBookingCard({ reference }: { reference: BookingReference }) {
                 : 'لم يرد الحلاقون المتاحون أو لم نجد بديلًا يغطي المنطقة. يمكنك تعديل المنطقة وإرسال طلب جديد.'}
             </small>
           )}
-          <small>عدد محاولات الإرسال: {booking.attemptCount.toLocaleString('ar')}</small>
+          <small>عدد محاولات الإرسال: {booking.attemptCount.toLocaleString(getLocale() === 'ar' ? 'ar' : 'fr-FR')}</small>
           <small>رقم الطلب #{booking.id}</small>
         </div>
       ) : (
@@ -1728,7 +1731,7 @@ function BarberPortal() {
   };
 
   return (
-    <div className="admin-shell" dir="rtl">
+    <div className="admin-shell">
       <header className="admin-topbar">
         <Brand />
         <div className="admin-topbar-side">
@@ -1828,7 +1831,7 @@ function BarberPortal() {
               </div>
               <div className="admin-count-card">
                 <span className="count-label">بانتظار ردك</span>
-                <strong>{(bookings.data ?? []).filter((booking) => booking.status === 'requested').length.toLocaleString('ar')}</strong>
+                <strong>{(bookings.data ?? []).filter((booking) => booking.status === 'requested').length.toLocaleString(getLocale() === 'ar' ? 'ar' : 'fr-FR')}</strong>
                 <span className="count-note"><span className="team-dot" /> طلبات واردة</span>
               </div>
             </div>
@@ -1961,15 +1964,19 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
 }
 
 function App() {
+  const { locale } = useLocale();
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-          <Router />
-        </WouterRouter>
-        <Toaster />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <div className="app-locale-root" data-locale={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+      <QueryClientProvider client={queryClient}>
+        <LanguageControl />
+        <TooltipProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+            <Router />
+          </WouterRouter>
+          <Toaster />
+        </TooltipProvider>
+      </QueryClientProvider>
+    </div>
   );
 }
 

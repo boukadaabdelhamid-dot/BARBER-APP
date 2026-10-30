@@ -11,6 +11,7 @@ export type ListBarbersCountryCode = typeof ListBarbersCountryCode[keyof typeof 
 
 export const ListBarbersCountryCode = {
   FR: 'FR',
+  DZ: 'DZ',
   AE: 'AE',
   QA: 'QA',
   SA: 'SA',

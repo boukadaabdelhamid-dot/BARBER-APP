@@ -2472,7 +2472,7 @@ export function useListAdminPaymentCountries<TData = Awaited<ReturnType<typeof l
 
 
 
-export const getUpdateAdminPaymentCountryUrl = (countryCode: 'FR' | 'AE' | 'QA' | 'SA',) => {
+export const getUpdateAdminPaymentCountryUrl = (countryCode: 'FR' | 'DZ' | 'AE' | 'QA' | 'SA',) => {
 
 
 
@@ -2483,7 +2483,7 @@ export const getUpdateAdminPaymentCountryUrl = (countryCode: 'FR' | 'AE' | 'QA' 
 /**
  * @summary Enable or disable payments for one country
  */
-export const updateAdminPaymentCountry = async (countryCode: 'FR' | 'AE' | 'QA' | 'SA',
+export const updateAdminPaymentCountry = async (countryCode: 'FR' | 'DZ' | 'AE' | 'QA' | 'SA',
     paymentCountryUpdate: PaymentCountryUpdate, options?: Parameters<typeof customFetch>[1]): Promise<PaymentCountry> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
@@ -2545,7 +2545,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UpdateAdminPaymentCountryMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminPaymentCountry>>>
     export type UpdateAdminPaymentCountryMutationBody = BodyType<PaymentCountryUpdate>
     export type UpdateAdminPaymentCountryMutationError = ErrorType<void>
-    export type UpdateAdminPaymentCountryMutationVariables = {countryCode: 'FR' | 'AE' | 'QA' | 'SA';data: BodyType<PaymentCountryUpdate>}
+    export type UpdateAdminPaymentCountryMutationVariables = {countryCode: 'FR' | 'DZ' | 'AE' | 'QA' | 'SA';data: BodyType<PaymentCountryUpdate>}
 
     /**
  * @summary Enable or disable payments for one country

@@ -3,6 +3,7 @@ import { db, paymentCountrySettingsTable } from "@workspace/db";
 
 export const PAYMENT_COUNTRIES = [
   { countryCode: "FR", countryName: "فرنسا", currency: "EUR" },
+  { countryCode: "DZ", countryName: "الجزائر", currency: "DZD" },
   { countryCode: "AE", countryName: "الإمارات العربية المتحدة (دبي)", currency: "AED" },
   { countryCode: "QA", countryName: "قطر", currency: "QAR" },
   { countryCode: "SA", countryName: "السعودية", currency: "SAR" },

@@ -11,6 +11,7 @@ export type PaymentCountryParamsCountryCode = typeof PaymentCountryParamsCountry
 
 export const PaymentCountryParamsCountryCode = {
   FR: 'FR',
+  DZ: 'DZ',
   AE: 'AE',
   QA: 'QA',
   SA: 'SA',

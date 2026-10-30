@@ -14,6 +14,7 @@ export type BarberCountryCode = typeof BarberCountryCode[keyof typeof BarberCoun
 
 export const BarberCountryCode = {
   FR: 'FR',
+  DZ: 'DZ',
   AE: 'AE',
   QA: 'QA',
   SA: 'SA',

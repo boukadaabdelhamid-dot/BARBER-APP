@@ -14,6 +14,7 @@ export type PaymentCountryCountryCode = typeof PaymentCountryCountryCode[keyof t
 
 export const PaymentCountryCountryCode = {
   FR: 'FR',
+  DZ: 'DZ',
   AE: 'AE',
   QA: 'QA',
   SA: 'SA',
@@ -24,6 +25,7 @@ export type PaymentCountryCurrency = typeof PaymentCountryCurrency[keyof typeof 
 
 export const PaymentCountryCurrency = {
   EUR: 'EUR',
+  DZD: 'DZD',
   AED: 'AED',
   QAR: 'QAR',
   SAR: 'SAR',
@@ -47,6 +49,7 @@ export type PaymentCountryParamsCountryCode = typeof PaymentCountryParamsCountry
 
 export const PaymentCountryParamsCountryCode = {
   FR: 'FR',
+  DZ: 'DZ',
   AE: 'AE',
   QA: 'QA',
   SA: 'SA',
@@ -71,6 +74,7 @@ export type BarberCountryCode = typeof BarberCountryCode[keyof typeof BarberCoun
 
 export const BarberCountryCode = {
   FR: 'FR',
+  DZ: 'DZ',
   AE: 'AE',
   QA: 'QA',
   SA: 'SA',
@@ -133,6 +137,7 @@ export type BarberInputCountryCode = typeof BarberInputCountryCode[keyof typeof 
 
 export const BarberInputCountryCode = {
   FR: 'FR',
+  DZ: 'DZ',
   AE: 'AE',
   QA: 'QA',
   SA: 'SA',
@@ -324,6 +329,7 @@ export type BarberReviewCountryCode = typeof BarberReviewCountryCode[keyof typeo
 
 export const BarberReviewCountryCode = {
   FR: 'FR',
+  DZ: 'DZ',
   AE: 'AE',
   QA: 'QA',
   SA: 'SA',
@@ -375,6 +381,7 @@ export type BookingInputCountryCode = typeof BookingInputCountryCode[keyof typeo
 
 export const BookingInputCountryCode = {
   FR: 'FR',
+  DZ: 'DZ',
   AE: 'AE',
   QA: 'QA',
   SA: 'SA',
@@ -548,6 +555,7 @@ export type ListBarbersCountryCode = typeof ListBarbersCountryCode[keyof typeof 
 
 export const ListBarbersCountryCode = {
   FR: 'FR',
+  DZ: 'DZ',
   AE: 'AE',
   QA: 'QA',
   SA: 'SA',

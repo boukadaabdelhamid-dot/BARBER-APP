@@ -49,7 +49,7 @@ paths:
         - name: countryCode
           in: query
           required: false
-          schema: { type: string, enum: [FR, AE, QA, SA] }
+          schema: { type: string, enum: [FR, DZ, AE, QA, SA] }
         - name: search
           in: query
           required: false
@@ -537,7 +537,7 @@ paths:
         - name: countryCode
           in: path
           required: true
-          schema: { type: string, enum: [FR, AE, QA, SA] }
+          schema: { type: string, enum: [FR, DZ, AE, QA, SA] }
       requestBody:
         required: true
         content:
@@ -568,9 +568,9 @@ components:
       type: object
       required: [countryCode, countryName, currency, enabled, providerReady, acceptingPayments]
       properties:
-        countryCode: { type: string, enum: [FR, AE, QA, SA] }
+        countryCode: { type: string, enum: [FR, DZ, AE, QA, SA] }
         countryName: { type: string }
-        currency: { type: string, enum: [EUR, AED, QAR, SAR] }
+        currency: { type: string, enum: [EUR, DZD, AED, QAR, SAR] }
         enabled: { type: boolean }
         providerReady: { type: boolean }
         acceptingPayments: { type: boolean }
@@ -583,7 +583,7 @@ components:
       type: object
       required: [countryCode]
       properties:
-        countryCode: { type: string, enum: [FR, AE, QA, SA] }
+        countryCode: { type: string, enum: [FR, DZ, AE, QA, SA] }
     BarberService:
       type: object
       required: [id, name, durationMinutes, price]
@@ -598,7 +598,7 @@ components:
       properties:
         id: { type: integer }
         name: { type: string }
-        countryCode: { type: ["string", "null"], enum: [FR, AE, QA, SA, null] }
+        countryCode: { type: ["string", "null"], enum: [FR, DZ, AE, QA, SA, null] }
         city: { type: string }
         areas:
           type: array
@@ -629,7 +629,7 @@ components:
       required: [name, countryCode, city, areas, bio, phone, email, travelFee, currency, services]
       properties:
         name: { type: string, minLength: 2, maxLength: 100 }
-        countryCode: { type: string, enum: [FR, AE, QA, SA] }
+        countryCode: { type: string, enum: [FR, DZ, AE, QA, SA] }
         city: { type: string, minLength: 2, maxLength: 100 }
         areas:
           type: array
@@ -733,7 +733,7 @@ components:
       properties:
         id: { type: integer }
         name: { type: string }
-        countryCode: { type: ["string", "null"], enum: [FR, AE, QA, SA, null] }
+        countryCode: { type: ["string", "null"], enum: [FR, DZ, AE, QA, SA, null] }
         city: { type: string }
         areas:
           type: array
@@ -761,7 +761,7 @@ components:
       required: [serviceName, countryCode, city, locationMode, customerName, customerPhone, date, time]
       properties:
         serviceName: { type: string, minLength: 2, maxLength: 80 }
-        countryCode: { type: string, enum: [FR, AE, QA, SA] }
+        countryCode: { type: string, enum: [FR, DZ, AE, QA, SA] }
         city: { type: string, minLength: 2, maxLength: 100 }
         locationMode: { type: string, enum: [manual, gps] }
         customerName: { type: string, minLength: 2, maxLength: 100 }

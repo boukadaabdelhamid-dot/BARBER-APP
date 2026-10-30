@@ -11,6 +11,7 @@ export type PaymentCountryCurrency = typeof PaymentCountryCurrency[keyof typeof 
 
 export const PaymentCountryCurrency = {
   EUR: 'EUR',
+  DZD: 'DZD',
   AED: 'AED',
   QAR: 'QAR',
   SAR: 'SAR',

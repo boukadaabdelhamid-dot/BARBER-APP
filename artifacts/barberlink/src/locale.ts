@@ -156,12 +156,14 @@ export function getLocale(): Locale { return activeLocale; }
 const countryLabels: Record<Locale, Record<string, string>> = {
   ar: {
     FR: 'فرنسا',
+    DZ: 'الجزائر',
     AE: 'الإمارات العربية المتحدة (دبي)',
     QA: 'قطر',
     SA: 'السعودية',
   },
   fr: {
     FR: 'France',
+    DZ: 'Algérie',
     AE: 'Émirats arabes unis (Dubaï)',
     QA: 'Qatar',
     SA: 'Arabie saoudite',

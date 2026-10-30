@@ -11,6 +11,7 @@ export type BookingInputCountryCode = typeof BookingInputCountryCode[keyof typeo
 
 export const BookingInputCountryCode = {
   FR: 'FR',
+  DZ: 'DZ',
   AE: 'AE',
   QA: 'QA',
   SA: 'SA',

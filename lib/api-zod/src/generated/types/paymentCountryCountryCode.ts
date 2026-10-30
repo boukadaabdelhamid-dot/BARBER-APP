@@ -11,6 +11,7 @@ export type PaymentCountryCountryCode = typeof PaymentCountryCountryCode[keyof t
 
 export const PaymentCountryCountryCode = {
   FR: 'FR',
+  DZ: 'DZ',
   AE: 'AE',
   QA: 'QA',
   SA: 'SA',

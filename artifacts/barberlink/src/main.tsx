@@ -6,7 +6,7 @@ import { ErrorBoundary } from '@/components/error-boundary';
 
 import './index.css';
 
-const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
+const googleClientId = import.meta.env.GOOGLE_CLIENT_ID?.trim() ?? '';
 
 createRoot(document.getElementById('root')!, {
   // Keeps caught errors off reportError(), which would raise the dev overlay.

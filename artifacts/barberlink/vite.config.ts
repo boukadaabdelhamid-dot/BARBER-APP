@@ -29,11 +29,7 @@ if (!basePath) {
 
 export default defineConfig({
   base: basePath,
-  define: {
-    'import.meta.env.VITE_GOOGLE_CLIENT_ID': JSON.stringify(
-      process.env.GOOGLE_CLIENT_ID ?? '',
-    ),
-  },
+  envPrefix: ['VITE_', 'GOOGLE_CLIENT_ID'],
   plugins: [
     react(),
     tailwindcss(),

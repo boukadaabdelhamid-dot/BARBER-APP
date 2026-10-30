@@ -26,3 +26,4 @@ channel = "stable-25_05"
 
 [userenv.shared]
 VITE_SUPPORT_WHATSAPP = "213771590509"
+GOOGLE_CLIENT_ID = "947595034469-rkfsk64set3jrektlno2763p2q1klo1m.apps.googleusercontent.com"

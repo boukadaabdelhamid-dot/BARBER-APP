@@ -11,7 +11,7 @@ export function GoogleAuthButton({
   onCredential,
   onError,
 }: GoogleAuthButtonProps) {
-  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
+  const clientId = import.meta.env.GOOGLE_CLIENT_ID?.trim() ?? '';
   if (!clientId) {
     return (
       <div className="google-auth-control" data-testid={testId}>

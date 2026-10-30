@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/reac
 import {
   useCreateBarber,
   useCreateBooking,
+  useUpdateBarberAvailability,
   useDecideBarberBooking,
   useGetBarber,
   useGetBarberSession,
@@ -273,7 +274,9 @@ function BarberCard({
     <article className="barber-card" dir="rtl" data-testid={`card-barber-${barber.id}`}>
       <div className="barber-photo">
         <BarberImage barber={barber} />
-        <span className="availability"><span /> ملف نشط</span>
+        <span className={`availability ${barber.isAvailable ? 'is-available' : 'is-offline'}`}>
+          <span /> {barber.isAvailable ? 'متاح الآن' : 'غير متاح الآن'}
+        </span>
       </div>
       <div className="card-body">
         <div className="card-name-row">
@@ -323,7 +326,9 @@ function Home() {
   const [activeServiceId, setActiveServiceId] = useState('');
   const [suggestionReady, setSuggestionReady] = useState(false);
   const params = useMemo(() => ({}), []);
-  const listQuery = useListBarbers(params, { query: { queryKey: getListBarbersQueryKey(params) } });
+  const listQuery = useListBarbers(params, {
+    query: { queryKey: getListBarbersQueryKey(params), refetchInterval: 15000 },
+  });
   const health = useHealthCheck();
   const barberQuery = useGetBarber(activeBarberId ?? 0, {
     query: {
@@ -347,7 +352,7 @@ function Home() {
     : [];
   const areaIsCovered = (barber: Barber) => Boolean(area.trim()) &&
     barber.areas.some((value) => value.trim().toLocaleLowerCase() === area.trim().toLocaleLowerCase());
-  const coveredMatches = matchingBarbers.filter(({ barber }) => areaIsCovered(barber));
+  const coveredMatches = matchingBarbers.filter(({ barber }) => barber.isAvailable && areaIsCovered(barber));
   const searchedMatches = searchText.trim()
     ? matchingBarbers.filter(({ barber, service }) => {
       const term = searchText.trim().toLocaleLowerCase();
@@ -532,6 +537,7 @@ function Home() {
           onClose={closeModal}
           onBook={() => setModalMode('booking')}
           selectedServiceId={activeServiceId}
+          initialCity={city}
           initialArea={area}
         />
       )}
@@ -548,6 +554,7 @@ function BarberModal({
   onClose,
   onBook,
   selectedServiceId,
+  initialCity,
   initialArea,
 }: {
   mode: 'profile' | 'booking';
@@ -558,22 +565,31 @@ function BarberModal({
   onClose: () => void;
   onBook: () => void;
   selectedServiceId: string;
+  initialCity: string;
   initialArea: string;
 }) {
   const [confirmation, setConfirmation] = useState<{
     id: number;
     status: string;
     barberName: string;
+    barberPhone: string;
     serviceName: string;
+    servicePrice: number;
+    travelFee: number;
+    currency: string;
     date: string | Date;
     time: string;
+    attemptCount: number;
   } | null>(null);
   const booking = useCreateBooking();
   const [formError, setFormError] = useState('');
+  const [locationMode, setLocationMode] = useState<'manual' | 'gps'>('manual');
+  const [coordinates, setCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locationError, setLocationError] = useState('');
   const [contactDetails, setContactDetails] = useState<{ name: string; phone: string; area: string } | null>(null);
   const dateInput = useRef<HTMLInputElement>(null);
   const minDate = new Date().toLocaleDateString('en-CA');
-  const whatsappPhone = barber?.phone.replace(/\D/g, '') ?? '';
+  const whatsappPhone = confirmation?.barberPhone.replace(/\D/g, '') ?? '';
   const whatsappMessage = confirmation
     ? `مرحبًا ${confirmation.barberName}، أرسلت طلب الموعد رقم ${confirmation.id}.\nالخدمة: ${confirmation.serviceName}\nالتاريخ: ${dateLabel(confirmation.date)} الساعة ${confirmation.time}\nالاسم: ${contactDetails?.name ?? ''}\nهاتف التواصل: ${contactDetails?.phone ?? ''}\nالمنطقة: ${contactDetails?.area ?? ''}\nأرجو تأكيد الموعد.`
     : '';
@@ -586,26 +602,34 @@ function BarberModal({
 
   const submitBooking = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!barber) return;
+    if (!barber || !requestedService) return;
     const form = new FormData(event.currentTarget);
+    const area = String(form.get('area') || '').trim();
+    if (locationMode === 'manual' && area.length < 2) {
+      setFormError('أدخل الحي أو شارك موقعك بموافقتك.');
+      return;
+    }
+    if (locationMode === 'gps' && !coordinates) {
+      setFormError('شارك موقعك أولًا، أو اختر إدخال المنطقة يدويًا.');
+      return;
+    }
     const payload: BookingInput = {
-      barberId: barber.id,
-      serviceId: requestedService?.id ?? '',
+      serviceName: requestedService.name,
+      city: initialCity || barber.city,
+      locationMode,
       customerName: String(form.get('customerName') || '').trim(),
       customerPhone: String(form.get('customerPhone') || '').trim(),
-      area: String(form.get('area') || '').trim(),
+      area: locationMode === 'manual' ? area : null,
+      latitude: locationMode === 'gps' ? coordinates?.latitude : null,
+      longitude: locationMode === 'gps' ? coordinates?.longitude : null,
       date: String(form.get('date') || ''),
       time: String(form.get('time') || ''),
       note: String(form.get('note') || '').trim() || null,
     };
-    if (!payload.serviceId || !payload.area) {
-      setFormError('يرجى اختيار خدمة ومنطقة صالحتين قبل إرسال الطلب.');
-      return;
-    }
     setContactDetails({
       name: payload.customerName,
       phone: payload.customerPhone,
-      area: payload.area,
+      area: payload.area || 'موقعي الحالي',
     });
     setFormError('');
     booking.mutate({ data: payload }, {
@@ -613,8 +637,39 @@ function BarberModal({
         saveTrackingReference(result.id, result.trackingToken);
         setConfirmation(result);
       },
-      onError: () => setFormError('تعذّر إرسال طلبك. يرجى التحقق من البيانات والمحاولة مرة أخرى.'),
+      onError: (error) => {
+        const apiMessage = (error as { data?: { error?: string } })?.data?.error ?? '';
+        setFormError(
+          apiMessage.includes('No available barber')
+            ? 'لا يوجد حلاق متاح لهذه الخدمة والمنطقة الآن. جرّب إدخال منطقة أخرى أو أعد المحاولة لاحقًا.'
+            : 'تعذّر إرسال طلبك. تحقق من البيانات والاتصال ثم حاول مرة أخرى.',
+        );
+      },
     });
+  };
+
+  const shareLocation = () => {
+    setLocationError('');
+    if (!navigator.geolocation) {
+      setLocationError('المتصفح لا يدعم تحديد الموقع. يمكنك إدخال المنطقة يدويًا.');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setCoordinates({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+        setLocationMode('gps');
+        setFormError('');
+      },
+      () => {
+        setLocationError('لم نتمكن من الوصول إلى موقعك. اختر إدخال المنطقة يدويًا للمتابعة.');
+        setLocationMode('manual');
+        setCoordinates(null);
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
+    );
   };
 
   return (
@@ -630,13 +685,14 @@ function BarberModal({
             <div className="success-mark"><Check aria-hidden="true" /></div>
             <div className="eyebrow">وصل طلبك</div>
             <h2>تم إرسال طلب الموعد</h2>
-            <p>حُفظ طلبك. ستظهر حالة التأكيد في صفحة «طلباتي» بعد أن يراجع الحلاق الطلب.</p>
+            <p>أرسلنا طلبك إلى حلاق متاح مناسب لموقعك. ستظهر موافقته أو انتقال الطلب إلى حلاق بديل في صفحة «طلباتي».</p>
             <div className="confirmation-details">
               <div>الحلاق: <strong>{confirmation.barberName}</strong></div>
               <div>الخدمة: <strong>{confirmation.serviceName}</strong></div>
+              <div>السعر: <strong>{money(confirmation.servicePrice, confirmation.currency)}</strong> · التنقل: <strong>{money(confirmation.travelFee, confirmation.currency)}</strong></div>
               <div>التاريخ والوقت: <strong>{dateLabel(confirmation.date)}، {confirmation.time}</strong></div>
               <div>رقم الطلب: <strong>#{confirmation.id}</strong></div>
-              <div>الحالة: <strong>قيد انتظار رد الحلاق</strong></div>
+            <div>الحالة: <strong>تم إرسال الطلب · المحاولة {confirmation.attemptCount.toLocaleString('ar')}</strong></div>
             </div>
             <Link href="/my-bookings" className="submit-button" onClick={onClose} data-testid="link-track-booking">متابعة حالة الطلب</Link>
             {whatsappPhone && (
@@ -684,11 +740,11 @@ function BarberModal({
         ) : (
           <form className="booking-form" onSubmit={submitBooking}>
             <div className="booking-topline">خطوة واحدة تفصلك عن موعدك</div>
-            <h2>اطلب موعدًا مع {barber.name}</h2>
-            <p>أرسل طلبك، وسيتواصل معك الحلاق لتأكيد الموعد.</p>
+            <h2>اطلب أقرب حلاق متاح</h2>
+            <p>سنبحث عن حلاق متاح في {initialCity || barber.city} يقدّم الخدمة ويغطي موقعك.</p>
             <div className="booking-summary" data-testid="booking-summary">
-              <span><strong>{barber.name}</strong> · {barber.city}<small>{requestedService?.name ?? 'الخدمة'} · {requestedService?.durationMinutes ?? 0} دقيقة</small></span>
-              <span className="booking-price">{requestedService ? money(requestedService.price, barber.currency) : '—'}<small>رسوم التنقل {money(barber.travelFee, barber.currency)}</small></span>
+              <span><strong>{barber.city}</strong><small>{requestedService?.name ?? 'الخدمة'} · {requestedService?.durationMinutes ?? 0} دقيقة</small></span>
+              <span className="booking-price">السعر يحدده الحلاق المتاح<small>يظهر السعر قبل تأكيد الموعد</small></span>
             </div>
             {formError && <div className="status-banner error" role="alert"><AlertCircle />{formError}</div>}
             <input type="hidden" name="serviceId" value={requestedService?.id ?? ''} />
@@ -702,10 +758,33 @@ function BarberModal({
                 <input id="booking-phone" name="customerPhone" type="tel" required minLength={7} maxLength={30} placeholder="رقم يمكن التواصل عليه" data-testid="input-customer-phone" />
               </div>
             </div>
-            <div className="field">
-              <label htmlFor="booking-area">الحي أو المنطقة</label>
-                <input id="booking-area" name="area" required minLength={2} maxLength={120} defaultValue={initialArea} placeholder="أين ترغب باستقبال الحلاق؟" data-testid="input-booking-area" />
-            </div>
+            <fieldset className="location-choice">
+              <legend>كيف تحدد موقعك؟</legend>
+              <label>
+                <input type="radio" name="locationMode" checked={locationMode === 'manual'} onChange={() => setLocationMode('manual')} />
+                <span>أدخل المنطقة يدويًا</span>
+              </label>
+              <label>
+                <input type="radio" name="locationMode" checked={locationMode === 'gps'} onChange={() => setLocationMode('gps')} />
+                <span>استخدم موقعي بموافقتي</span>
+              </label>
+              {locationMode === 'manual' ? (
+                <div className="field">
+                  <label htmlFor="booking-area">الحي أو المنطقة</label>
+                  <input id="booking-area" name="area" required minLength={2} maxLength={120} defaultValue={initialArea} placeholder="أين ترغب باستقبال الحلاق؟" data-testid="input-booking-area" />
+                </div>
+              ) : (
+                <div className="location-share">
+                  <button className="admin-secondary-button" type="button" onClick={shareLocation} data-testid="button-share-customer-location">
+                    <MapPin size={15} /> {coordinates ? 'تم تحديد موقعي' : 'مشاركة موقعي'}
+                  </button>
+                  <small>لن نطلب الموقع إلا بعد ضغطك على الزر. نستخدمه لاختيار حلاق ضمن 30 كم.</small>
+                </div>
+              )}
+              {(locationError || (locationMode === 'gps' && !coordinates)) && (
+                <small className="location-error" role="status">{locationError || 'اضغط مشاركة موقعي للسماح بالوصول إلى موقعك.'}</small>
+              )}
+            </fieldset>
             <div className="form-grid">
               <div className="field">
                 <label htmlFor="booking-date">التاريخ</label>
@@ -1237,7 +1316,7 @@ function readCustomerBookings(): BookingReference[] {
 
 function bookingStatusLabel(status: string) {
   if (status === 'confirmed') return 'تم تأكيد الموعد';
-  if (status === 'rejected') return 'تعذّر قبول الموعد';
+  if (status === 'unavailable') return 'لم نعثر على حلاق متاح';
   return 'بانتظار رد الحلاق';
 }
 
@@ -1283,14 +1362,37 @@ function CustomerBookingCard({ reference }: { reference: BookingReference }) {
   const booking = query.data as BookingTracking | undefined;
   return (
     <article className="tracking-card" data-testid={`tracking-card-${reference.id}`}>
-      <div className={`tracking-status ${booking?.status ?? 'requested'}`}>
-        {query.isLoading ? 'جارٍ تحميل الحالة…' : query.isError ? 'تعذّر تحميل الحالة' : bookingStatusLabel(booking?.status ?? 'requested')}
+        <div className={`tracking-status ${booking?.status ?? 'requested'}`}>
+          {query.isLoading
+            ? 'جارٍ تحميل الحالة…'
+            : query.isError
+              ? 'تعذّر تحميل الحالة'
+              : booking?.status === 'requested' && booking.attemptCount > 1
+                ? 'أرسلنا الطلب إلى حلاق بديل'
+                : bookingStatusLabel(booking?.status ?? 'requested')}
       </div>
       {booking ? (
         <div className="tracking-details">
-          <strong>{booking.barberName}</strong>
+          <strong>{booking.barberName ?? 'لا يوجد حلاق متاح حاليًا'}</strong>
           <span>{booking.serviceName}</span>
           <span>{dateLabel(booking.date)} · {booking.time}</span>
+          {booking.status === 'requested' && (
+            <small>
+              {booking.attemptCount > 1
+                ? booking.lastAttemptReason === 'rejected'
+                  ? 'اعتذر الحلاق السابق؛ أرسلنا الطلب إلى حلاق بديل.'
+                  : 'لم يصل رد من الحلاق السابق؛ أرسلنا الطلب إلى حلاق بديل.'
+                : 'إذا لم يصل رد خلال دقيقة، سنحاول مع حلاق آخر تلقائيًا.'}
+            </small>
+          )}
+          {booking.status === 'unavailable' && (
+            <small>
+              {booking.lastAttemptReason === 'rejected'
+                ? 'اعتذر الحلاقون الذين استلموا الطلب أو لم يتوفر بديل يغطي المنطقة. يمكنك تعديل المنطقة وإرسال طلب جديد.'
+                : 'لم يرد الحلاقون المتاحون أو لم نجد بديلًا يغطي المنطقة. يمكنك تعديل المنطقة وإرسال طلب جديد.'}
+            </small>
+          )}
+          <small>عدد محاولات الإرسال: {booking.attemptCount.toLocaleString('ar')}</small>
           <small>رقم الطلب #{booking.id}</small>
         </div>
       ) : (
@@ -1323,10 +1425,12 @@ function BarberPortal() {
   const recoverPassword = useRecoverBarberPassword();
   const logout = useLogoutBarber();
   const decideBooking = useDecideBarberBooking();
+  const updateAvailability = useUpdateBarberAvailability();
   const [loginMode, setLoginMode] = useState<'email' | 'legacy' | 'recover'>('email');
   const [loginError, setLoginError] = useState('');
   const [recoveryResult, setRecoveryResult] = useState<{ barberId: number; email: string; accessCode: string } | null>(null);
   const [decisionError, setDecisionError] = useState('');
+  const [availabilityError, setAvailabilityError] = useState('');
   const [busyBooking, setBusyBooking] = useState<number | null>(null);
 
   const refreshBarberSession = async () => {
@@ -1399,6 +1503,43 @@ function BarberPortal() {
         ]);
       },
     });
+  };
+
+  const saveAvailability = (isAvailable: boolean, location?: { latitude: number; longitude: number }) => {
+    setAvailabilityError('');
+    updateAvailability.mutate({
+      data: {
+        isAvailable,
+        ...(location ?? {}),
+      },
+    }, {
+      onSuccess: async (updatedSession) => {
+        queryClient.setQueryData(getGetBarberSessionQueryKey(), updatedSession);
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: getListBarbersQueryKey() }),
+          queryClient.invalidateQueries({ queryKey: getListBarberBookingsQueryKey() }),
+        ]);
+      },
+      onError: () => setAvailabilityError('تعذّر تحديث حالة التوفر. تحقق من الاتصال وحاول مجددًا.'),
+    });
+  };
+
+  const shareBarberLocation = () => {
+    setAvailabilityError('');
+    if (!navigator.geolocation) {
+      setAvailabilityError('المتصفح لا يدعم تحديد الموقع. يمكنك استقبال الطلبات حسب نطاق الأحياء المسجل.');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        saveAvailability(session.data?.isAvailable === true, {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+      },
+      () => setAvailabilityError('لم نتمكن من الوصول إلى موقعك. يمكنك تشغيل التوفر دون مشاركة الموقع.'),
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
+    );
   };
 
   const decide = (bookingId: number, status: 'confirmed' | 'rejected') => {
@@ -1521,6 +1662,34 @@ function BarberPortal() {
                 <span className="count-note"><span className="team-dot" /> طلبات واردة</span>
               </div>
             </div>
+            <section className="barber-availability-panel" aria-label="إعدادات استقبال الطلبات">
+              <div>
+                <strong>{session.data?.isAvailable ? 'متاح لاستقبال الطلبات' : 'متوقف عن استقبال الطلبات'}</strong>
+                <p>{session.data?.hasLocation ? 'سيظهر موقعك الدقيق للمنظومة فقط لاختيار الأقرب.' : 'يمكنك استقبال الطلبات حسب نطاق الأحياء المسجل في ملفك.'}</p>
+              </div>
+              <div className="availability-actions">
+                <button
+                  className={`availability-toggle ${session.data?.isAvailable ? 'enabled' : ''}`}
+                  type="button"
+                  aria-pressed={session.data?.isAvailable === true}
+                  disabled={updateAvailability.isPending}
+                  onClick={() => saveAvailability(session.data?.isAvailable !== true)}
+                  data-testid="button-toggle-barber-availability"
+                >
+                  {updateAvailability.isPending ? 'جارٍ الحفظ…' : session.data?.isAvailable ? 'إيقاف التوفر' : 'تشغيل التوفر'}
+                </button>
+                <button
+                  className="admin-secondary-button"
+                  type="button"
+                  disabled={updateAvailability.isPending}
+                  onClick={shareBarberLocation}
+                  data-testid="button-share-barber-location"
+                >
+                  <MapPin size={15} /> {session.data?.hasLocation ? 'تحديث موقعي' : 'مشاركة موقعي لتحديد الأقرب'}
+                </button>
+              </div>
+              {availabilityError && <p className="availability-error" role="alert">{availabilityError}</p>}
+            </section>
             {decisionError && <div className="admin-alert admin-alert-wide" role="alert"><AlertCircle size={17} />{decisionError}</div>}
             {bookings.isLoading ? (
               <div className="review-skeletons" aria-label="جارٍ تحميل الطلبات"><div className="review-skeleton" /><div className="review-skeleton" /></div>

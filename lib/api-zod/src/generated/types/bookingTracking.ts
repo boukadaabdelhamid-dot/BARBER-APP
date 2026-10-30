@@ -5,13 +5,18 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { BookingTrackingLastAttemptReason } from './bookingTrackingLastAttemptReason';
 import type { BookingTrackingStatus } from './bookingTrackingStatus';
 
 export interface BookingTracking {
   id: number;
   status: BookingTrackingStatus;
-  barberName: string;
+  /** @nullable */
+  barberName: string | null;
   serviceName: string;
   date: Date;
   time: string;
+  attemptCount: number;
+  /** @nullable */
+  lastAttemptReason: BookingTrackingLastAttemptReason;
 }

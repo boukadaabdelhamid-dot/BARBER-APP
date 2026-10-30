@@ -688,3 +688,30 @@ body { min-width: 320px; }
   .booking-decision-row .review-actions { width:100%; }
   .booking-decision-row .review-actions button { flex:1; }
 }
+
+.availability.is-offline { color:#8b6b58; }
+.availability.is-offline span { background:#bc8b67; }
+.availability.is-available { color:#326451; }
+.availability.is-available span { background:#5d9973; }
+.location-choice { display:grid;gap:10px;margin:0 0 17px;padding:14px;border:1px solid #e2dfd4;border-radius:9px; }
+.location-choice legend { padding:0 5px;color:#52675c;font-size:11px;font-weight:700; }
+.location-choice>label { display:flex;align-items:center;gap:8px;color:#4f6257;font-size:12px; }
+.location-choice input[type="radio"] { accent-color:#326451; }
+.location-share { display:grid;gap:8px; }
+.location-share .admin-secondary-button { width:fit-content; }
+.location-share small,.location-choice .location-error { color:#808b80;font-size:10px;line-height:1.6; }
+.location-choice .location-error { color:#a65f50; }
+.tracking-status.unavailable { background:#f7e8e1;color:#a65f50; }
+.barber-availability-panel { display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px 20px;margin:20px 0 24px;padding:17px 20px;border:1px solid #dfe0d5;border-radius:12px;background:rgba(251,250,246,.72); }
+.barber-availability-panel>div:first-child strong { color:#35594a;font-size:13px; }
+.barber-availability-panel>div:first-child p { margin:5px 0 0;color:#7b857b;font-size:10px;line-height:1.5; }
+.availability-actions { display:flex;align-items:center;gap:9px; }
+.availability-toggle { min-height:38px;padding:9px 13px;border:1px solid #d8d7cc;border-radius:7px;background:#f3eadc;color:#815d43;font-size:11px;font-weight:700; }
+.availability-toggle.enabled { border-color:#b8d0ba;background:#e1eee4;color:#347052; }
+.availability-toggle:disabled { opacity:.6; }
+.availability-error { grid-column:1/-1;margin:0;color:#a65f50;font-size:11px; }
+@media(max-width:680px) {
+  .barber-availability-panel { grid-template-columns:1fr;padding:15px; }
+  .availability-actions { align-items:stretch;flex-direction:column; }
+  .availability-actions button { width:100%;justify-content:center; }
+}

@@ -11,7 +11,11 @@ export interface BookingConfirmation {
   id: number;
   status: BookingConfirmationStatus;
   barberName: string;
+  barberPhone: string;
   serviceName: string;
+  servicePrice: number;
+  travelFee: number;
+  currency: string;
   date: Date;
   time: string;
   /**
@@ -19,4 +23,5 @@ export interface BookingConfirmation {
      * @maxLength 128
      */
   trackingToken: string;
+  attemptCount: number;
 }

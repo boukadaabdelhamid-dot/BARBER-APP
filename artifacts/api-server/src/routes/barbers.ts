@@ -13,6 +13,7 @@ import {
 } from "@workspace/api-zod";
 import { db, barbersTable, bookingsTable } from "@workspace/db";
 import { hashPassword, normalizeEmail } from "../lib/password";
+import { findBestAvailableBarber } from "../lib/booking-dispatch";
 
 const router: IRouter = Router();
 
@@ -135,19 +136,28 @@ router.post("/bookings", async (req, res): Promise<void> => {
     return;
   }
 
-  const [barber] = await db
-    .select()
-    .from(barbersTable)
-    .where(and(eq(barbersTable.id, parsed.data.barberId), eq(barbersTable.status, "active")));
-
-  if (!barber) {
-    res.status(404).json({ error: "Barber not found" });
+  const area = parsed.data.area?.trim() ?? "";
+  if (
+    (parsed.data.locationMode === "manual" && area.length < 2) ||
+    (parsed.data.locationMode === "gps" &&
+      (parsed.data.latitude == null || parsed.data.longitude == null))
+  ) {
+    res.status(400).json({ error: "Provide a region or an approved location." });
     return;
   }
 
-  const service = barber.services.find((item) => item.id === parsed.data.serviceId);
-  if (!service) {
-    res.status(404).json({ error: "Service not found" });
+  const match = await findBestAvailableBarber({
+    serviceName: parsed.data.serviceName,
+    city: parsed.data.city,
+    locationMode: parsed.data.locationMode,
+    area,
+    latitude: parsed.data.locationMode === "gps" ? parsed.data.latitude ?? null : null,
+    longitude: parsed.data.locationMode === "gps" ? parsed.data.longitude ?? null : null,
+  });
+  if (!match) {
+    res.status(409).json({
+      error: "No available barber currently covers this service and location.",
+    });
     return;
   }
 
@@ -157,19 +167,25 @@ router.post("/bookings", async (req, res): Promise<void> => {
   const [booking] = await db
     .insert(bookingsTable)
     .values({
-      barberId: barber.id,
-      serviceId: service.id,
-      serviceName: service.name,
-      servicePrice: service.price,
-      currency: barber.currency,
+      barberId: match.barber.id,
+      serviceId: match.service.id,
+      serviceName: match.service.name,
+      servicePrice: match.service.price,
+      currency: match.barber.currency,
       customerName: parsed.data.customerName,
       customerPhone: parsed.data.customerPhone,
-      area: parsed.data.area,
+      city: parsed.data.city.trim(),
+      area: area || "موقعي الحالي",
+      locationMode: parsed.data.locationMode,
+      latitude: parsed.data.locationMode === "gps" ? parsed.data.latitude ?? null : null,
+      longitude: parsed.data.locationMode === "gps" ? parsed.data.longitude ?? null : null,
       requestedDate,
       requestedTime: parsed.data.time,
       note: parsed.data.note ?? null,
       status: "requested",
       trackingTokenHash,
+      attemptedBarberIds: [],
+      assignedAt: new Date(),
     })
     .returning();
 
@@ -177,11 +193,16 @@ router.post("/bookings", async (req, res): Promise<void> => {
     CreateBookingResponse.parse({
       id: booking.id,
       status: "requested",
-      barberName: barber.name,
-      serviceName: service.name,
+      barberName: match.barber.name,
+      barberPhone: match.barber.phone,
+      serviceName: match.service.name,
+      servicePrice: match.service.price,
+      travelFee: match.barber.travelFee,
+      currency: match.barber.currency,
       date: new Date(`${booking.requestedDate}T00:00:00.000Z`),
       time: booking.requestedTime,
       trackingToken,
+      attemptCount: 1,
     }),
   );
 });

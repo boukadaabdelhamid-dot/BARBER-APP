@@ -10,4 +10,6 @@ export interface BarberSession {
   authenticated: boolean;
   barberId?: number;
   barberName?: string;
+  isAvailable?: boolean;
+  hasLocation?: boolean;
 }

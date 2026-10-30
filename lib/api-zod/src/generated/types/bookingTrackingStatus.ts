@@ -13,4 +13,5 @@ export const BookingTrackingStatus = {
   requested: 'requested',
   confirmed: 'confirmed',
   rejected: 'rejected',
+  unavailable: 'unavailable',
 } as const;

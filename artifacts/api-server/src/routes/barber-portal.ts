@@ -16,9 +16,15 @@ import {
   LogoutBarberResponse,
   RecoverBarberPasswordBody,
   RecoverBarberPasswordResponse,
+  UpdateBarberAvailabilityBody,
+  UpdateBarberAvailabilityResponse,
 } from "@workspace/api-zod";
 import { db, barbersTable, bookingsTable } from "@workspace/db";
 import { hashPassword, normalizeEmail, verifyPassword } from "../lib/password";
+import {
+  assignNextBarber,
+  hasBookingResponseTimedOut,
+} from "../lib/booking-dispatch";
 
 const router: IRouter = Router();
 const BARBER_COOKIE = "barberlink_barber";
@@ -131,15 +137,90 @@ router.get("/barber/session", async (req, res): Promise<void> => {
     return;
   }
   const [barber] = await db
-    .select({ id: barbersTable.id, name: barbersTable.name })
+    .select({
+      id: barbersTable.id,
+      name: barbersTable.name,
+      isAvailable: barbersTable.isAvailable,
+      latitude: barbersTable.latitude,
+      longitude: barbersTable.longitude,
+    })
     .from(barbersTable)
     .where(eq(barbersTable.id, barberId));
   res.json(
     GetBarberSessionResponse.parse(
       barber
-        ? { authenticated: true, barberId: barber.id, barberName: barber.name }
+        ? {
+            authenticated: true,
+            barberId: barber.id,
+            barberName: barber.name,
+            isAvailable: barber.isAvailable,
+            hasLocation: barber.latitude !== null && barber.longitude !== null,
+          }
         : { authenticated: false },
     ),
+  );
+});
+
+router.patch("/barber/availability", async (req, res): Promise<void> => {
+  const barberId = requireBarber(req, res);
+  if (barberId === null) return;
+
+  const parsed = UpdateBarberAvailabilityBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const hasLatitude = Object.hasOwn(parsed.data, "latitude");
+  const hasLongitude = Object.hasOwn(parsed.data, "longitude");
+  if (hasLatitude !== hasLongitude) {
+    res.status(400).json({ error: "Provide both coordinates together." });
+    return;
+  }
+
+  const [barber] = await db
+    .select({
+      id: barbersTable.id,
+      name: barbersTable.name,
+      status: barbersTable.status,
+      latitude: barbersTable.latitude,
+      longitude: barbersTable.longitude,
+    })
+    .from(barbersTable)
+    .where(eq(barbersTable.id, barberId));
+  if (!barber || barber.status !== "active") {
+    res.status(403).json({ error: "Only active barbers can receive requests." });
+    return;
+  }
+
+  const [updated] = await db
+    .update(barbersTable)
+    .set({
+      isAvailable: parsed.data.isAvailable,
+      ...(hasLatitude
+        ? {
+            latitude: parsed.data.latitude ?? null,
+            longitude: parsed.data.longitude ?? null,
+          }
+        : {}),
+    })
+    .where(eq(barbersTable.id, barberId))
+    .returning({
+      id: barbersTable.id,
+      name: barbersTable.name,
+      isAvailable: barbersTable.isAvailable,
+      latitude: barbersTable.latitude,
+      longitude: barbersTable.longitude,
+    });
+
+  res.json(
+    UpdateBarberAvailabilityResponse.parse({
+      authenticated: true,
+      barberId: updated.id,
+      barberName: updated.name,
+      isAvailable: updated.isAvailable,
+      hasLocation: updated.latitude !== null && updated.longitude !== null,
+    }),
   );
 });
 
@@ -368,9 +449,56 @@ router.patch("/barber/bookings/:bookingId/status", async (req, res): Promise<voi
     return;
   }
 
+  if (parsed.data.status === "rejected") {
+    const [current] = await db
+      .select()
+      .from(bookingsTable)
+      .where(
+        and(
+          eq(bookingsTable.id, params.data.bookingId),
+          eq(bookingsTable.barberId, barberId),
+        ),
+      );
+    if (!current) {
+      res.status(404).json({ error: "Booking not found" });
+      return;
+    }
+    if (current.status !== "requested") {
+      res.status(409).json({ error: "Booking was already decided" });
+      return;
+    }
+
+    const result = await assignNextBarber(current, barberId, "rejected");
+    if (result === "stale") {
+      res.status(409).json({ error: "Booking was already assigned or decided" });
+      return;
+    }
+    res.json(
+      DecideBarberBookingResponse.parse({
+        id: current.id,
+        status: "rejected",
+        serviceName: current.serviceName,
+        servicePrice: current.servicePrice,
+        currency: current.currency,
+        customerName: current.customerName,
+        customerPhone: current.customerPhone,
+        area: current.area,
+        date: current.requestedDate,
+        time: current.requestedTime,
+        note: current.note,
+        createdAt: current.createdAt,
+      }),
+    );
+    return;
+  }
+
   const [booking] = await db
     .update(bookingsTable)
-    .set({ status: parsed.data.status })
+    .set({
+      status: parsed.data.status,
+      latitude: null,
+      longitude: null,
+    })
     .where(
       and(
         eq(bookingsTable.id, params.data.bookingId),
@@ -420,17 +548,9 @@ router.get("/booking-status", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [booking] = await db
-    .select({
-      id: bookingsTable.id,
-      status: bookingsTable.status,
-      barberName: barbersTable.name,
-      serviceName: bookingsTable.serviceName,
-      date: bookingsTable.requestedDate,
-      time: bookingsTable.requestedTime,
-    })
+  let [booking] = await db
+    .select()
     .from(bookingsTable)
-    .innerJoin(barbersTable, eq(bookingsTable.barberId, barbersTable.id))
     .where(
       and(
         eq(bookingsTable.id, parsed.data.bookingId),
@@ -442,7 +562,55 @@ router.get("/booking-status", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Booking not found" });
     return;
   }
-  res.json(GetBookingStatusResponse.parse(booking));
+  if (
+    booking.status === "requested" &&
+    hasBookingResponseTimedOut(booking.assignedAt)
+  ) {
+    await assignNextBarber(booking, booking.barberId, "timeout");
+    [booking] = await db
+      .select()
+      .from(bookingsTable)
+      .where(
+        and(
+          eq(bookingsTable.id, parsed.data.bookingId),
+          eq(bookingsTable.trackingTokenHash, hash(parsed.data.token)),
+        ),
+      );
+  }
+
+  const [assignedBarber] = await db
+    .select({
+      id: barbersTable.id,
+      name: barbersTable.name,
+    })
+    .from(bookingsTable)
+    .innerJoin(barbersTable, eq(bookingsTable.barberId, barbersTable.id))
+    .where(
+      and(
+        eq(bookingsTable.id, parsed.data.bookingId),
+        eq(bookingsTable.trackingTokenHash, hash(parsed.data.token)),
+      ),
+    );
+
+  if (!booking || !assignedBarber) {
+    res.status(404).json({ error: "Booking not found" });
+    return;
+  }
+
+  const tracking = {
+    id: booking.id,
+    status: booking.status,
+    barberName: booking.status === "unavailable" ? null : assignedBarber.name,
+    serviceName: booking.serviceName,
+    date: booking.requestedDate,
+    time: booking.requestedTime,
+    lastAttemptReason: booking.lastAttemptReason,
+    attemptCount:
+      booking.status === "unavailable"
+        ? booking.attemptedBarberIds.length
+        : booking.attemptedBarberIds.length + 1,
+  };
+  res.json(GetBookingStatusResponse.parse(tracking));
 });
 
 export default router;

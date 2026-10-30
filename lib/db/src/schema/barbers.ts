@@ -1,5 +1,5 @@
 import { createInsertSchema } from "drizzle-zod";
-import { integer, jsonb, pgTable, real, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgTable, real, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
 
 export type BarberService = {
@@ -25,6 +25,9 @@ export const barbersTable = pgTable("barbers", {
   accessCodeHash: text("access_code_hash"),
   imageUrl: text("image_url"),
   status: text("status").notNull().default("pending"),
+  isAvailable: boolean("is_available").notNull().default(false),
+  latitude: real("latitude"),
+  longitude: real("longitude"),
   services: jsonb("services").$type<BarberService[]>().notNull().default([]),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [uniqueIndex("barbers_email_unique").on(table.email)]);

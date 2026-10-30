@@ -22,5 +22,6 @@ export interface Barber {
   /** @nullable */
   imageUrl?: string | null;
   status: BarberStatus;
+  isAvailable: boolean;
   services: BarberService[];
 }

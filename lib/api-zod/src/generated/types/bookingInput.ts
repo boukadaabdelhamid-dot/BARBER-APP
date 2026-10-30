@@ -5,14 +5,20 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { BookingInputLocationMode } from './bookingInputLocationMode';
 
 export interface BookingInput {
-  barberId: number;
   /**
-     * @minLength 1
-     * @maxLength 40
+     * @minLength 2
+     * @maxLength 80
      */
-  serviceId: string;
+  serviceName: string;
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  city: string;
+  locationMode: BookingInputLocationMode;
   /**
      * @minLength 2
      * @maxLength 100
@@ -26,8 +32,21 @@ export interface BookingInput {
   /**
      * @minLength 2
      * @maxLength 120
+     * @nullable
      */
-  area: string;
+  area?: string | null;
+  /**
+     * @minimum -90
+     * @maximum 90
+     * @nullable
+     */
+  latitude?: number | null;
+  /**
+     * @minimum -180
+     * @maximum 180
+     * @nullable
+     */
+  longitude?: number | null;
   date: Date;
   /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */
   time: string;

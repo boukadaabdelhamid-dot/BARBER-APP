@@ -39,6 +39,7 @@ export interface Barber {
   /** @nullable */
   imageUrl?: string | null;
   status: BarberStatus;
+  isAvailable: boolean;
   services: BarberService[];
 }
 
@@ -181,6 +182,24 @@ export interface BarberSession {
   authenticated: boolean;
   barberId?: number;
   barberName?: string;
+  isAvailable?: boolean;
+  hasLocation?: boolean;
+}
+
+export interface BarberAvailabilityInput {
+  isAvailable: boolean;
+  /**
+     * @minimum -90
+     * @maximum 90
+     * @nullable
+     */
+  latitude?: number | null;
+  /**
+     * @minimum -180
+     * @maximum 180
+     * @nullable
+     */
+  longitude?: number | null;
 }
 
 export interface BarberAccessCode {
@@ -243,13 +262,26 @@ export interface BarberDecisionInput {
   status: BarberDecisionInputStatus;
 }
 
+export type BookingInputLocationMode = typeof BookingInputLocationMode[keyof typeof BookingInputLocationMode];
+
+
+export const BookingInputLocationMode = {
+  manual: 'manual',
+  gps: 'gps',
+} as const;
+
 export interface BookingInput {
-  barberId: number;
   /**
-     * @minLength 1
-     * @maxLength 40
+     * @minLength 2
+     * @maxLength 80
      */
-  serviceId: string;
+  serviceName: string;
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  city: string;
+  locationMode: BookingInputLocationMode;
   /**
      * @minLength 2
      * @maxLength 100
@@ -263,8 +295,21 @@ export interface BookingInput {
   /**
      * @minLength 2
      * @maxLength 120
+     * @nullable
      */
-  area: string;
+  area?: string | null;
+  /**
+     * @minimum -90
+     * @maximum 90
+     * @nullable
+     */
+  latitude?: number | null;
+  /**
+     * @minimum -180
+     * @maximum 180
+     * @nullable
+     */
+  longitude?: number | null;
   date: string;
   /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */
   time: string;
@@ -286,7 +331,11 @@ export interface BookingConfirmation {
   id: number;
   status: BookingConfirmationStatus;
   barberName: string;
+  barberPhone: string;
   serviceName: string;
+  servicePrice: number;
+  travelFee: number;
+  currency: string;
   date: string;
   time: string;
   /**
@@ -294,6 +343,7 @@ export interface BookingConfirmation {
      * @maxLength 128
      */
   trackingToken: string;
+  attemptCount: number;
 }
 
 export type BookingDecisionInputStatus = typeof BookingDecisionInputStatus[keyof typeof BookingDecisionInputStatus];
@@ -315,6 +365,7 @@ export const BarberBookingStatus = {
   requested: 'requested',
   confirmed: 'confirmed',
   rejected: 'rejected',
+  unavailable: 'unavailable',
 } as const;
 
 export interface BarberBooking {
@@ -340,15 +391,31 @@ export const BookingTrackingStatus = {
   requested: 'requested',
   confirmed: 'confirmed',
   rejected: 'rejected',
+  unavailable: 'unavailable',
+} as const;
+
+/**
+ * @nullable
+ */
+export type BookingTrackingLastAttemptReason = typeof BookingTrackingLastAttemptReason[keyof typeof BookingTrackingLastAttemptReason] | null;
+
+
+export const BookingTrackingLastAttemptReason = {
+  rejected: 'rejected',
+  timeout: 'timeout',
 } as const;
 
 export interface BookingTracking {
   id: number;
   status: BookingTrackingStatus;
-  barberName: string;
+  /** @nullable */
+  barberName: string | null;
   serviceName: string;
   date: string;
   time: string;
+  attemptCount: number;
+  /** @nullable */
+  lastAttemptReason: BookingTrackingLastAttemptReason;
 }
 
 export type ListBarbersParams = {

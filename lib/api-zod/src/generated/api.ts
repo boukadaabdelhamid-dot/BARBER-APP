@@ -38,6 +38,7 @@ export const ListBarbersResponseItem = zod.object({
   "phone": zod.string(),
   "imageUrl": zod.string().nullish(),
   "status": zod.enum(['active', 'pending', 'rejected']),
+  "isAvailable": zod.boolean(),
   "services": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -143,6 +144,7 @@ export const GetBarberResponse = zod.object({
   "phone": zod.string(),
   "imageUrl": zod.string().nullish(),
   "status": zod.enum(['active', 'pending', 'rejected']),
+  "isAvailable": zod.boolean(),
   "services": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -158,7 +160,9 @@ export const GetBarberResponse = zod.object({
 export const GetBarberSessionResponse = zod.object({
   "authenticated": zod.boolean(),
   "barberId": zod.number().int().optional(),
-  "barberName": zod.string().optional()
+  "barberName": zod.string().optional(),
+  "isAvailable": zod.boolean().optional(),
+  "hasLocation": zod.boolean().optional()
 })
 
 
@@ -178,7 +182,9 @@ export const LoginBarberBody = zod.object({
 export const LoginBarberResponse = zod.object({
   "authenticated": zod.boolean(),
   "barberId": zod.number().int().optional(),
-  "barberName": zod.string().optional()
+  "barberName": zod.string().optional(),
+  "isAvailable": zod.boolean().optional(),
+  "hasLocation": zod.boolean().optional()
 })
 
 
@@ -188,7 +194,9 @@ export const LoginBarberResponse = zod.object({
 export const LogoutBarberResponse = zod.object({
   "authenticated": zod.boolean(),
   "barberId": zod.number().int().optional(),
-  "barberName": zod.string().optional()
+  "barberName": zod.string().optional(),
+  "isAvailable": zod.boolean().optional(),
+  "hasLocation": zod.boolean().optional()
 })
 
 
@@ -210,7 +218,9 @@ export const LoginBarberByEmailBody = zod.object({
 export const LoginBarberByEmailResponse = zod.object({
   "authenticated": zod.boolean(),
   "barberId": zod.number().int().optional(),
-  "barberName": zod.string().optional()
+  "barberName": zod.string().optional(),
+  "isAvailable": zod.boolean().optional(),
+  "hasLocation": zod.boolean().optional()
 })
 
 
@@ -252,7 +262,7 @@ export const RecoverBarberPasswordResponse = zod.object({
  */
 export const ListBarberBookingsResponseItem = zod.object({
   "id": zod.number().int(),
-  "status": zod.enum(['requested', 'confirmed', 'rejected']),
+  "status": zod.enum(['requested', 'confirmed', 'rejected', 'unavailable']),
   "serviceName": zod.string(),
   "servicePrice": zod.number(),
   "currency": zod.string(),
@@ -268,6 +278,32 @@ export const ListBarberBookingsResponse = zod.array(ListBarberBookingsResponseIt
 
 
 /**
+ * @summary Update availability and optional barber location
+ */
+export const updateBarberAvailabilityBodyLatitudeMin = -90;
+export const updateBarberAvailabilityBodyLatitudeMax = 90;
+
+export const updateBarberAvailabilityBodyLongitudeMin = -180;
+export const updateBarberAvailabilityBodyLongitudeMax = 180;
+
+
+
+export const UpdateBarberAvailabilityBody = zod.object({
+  "isAvailable": zod.boolean(),
+  "latitude": zod.number().min(updateBarberAvailabilityBodyLatitudeMin).max(updateBarberAvailabilityBodyLatitudeMax).nullish(),
+  "longitude": zod.number().min(updateBarberAvailabilityBodyLongitudeMin).max(updateBarberAvailabilityBodyLongitudeMax).nullish()
+})
+
+export const UpdateBarberAvailabilityResponse = zod.object({
+  "authenticated": zod.boolean(),
+  "barberId": zod.number().int().optional(),
+  "barberName": zod.string().optional(),
+  "isAvailable": zod.boolean().optional(),
+  "hasLocation": zod.boolean().optional()
+})
+
+
+/**
  * @summary Confirm or reject a booking request
  */
 export const DecideBarberBookingParams = zod.object({
@@ -280,7 +316,7 @@ export const DecideBarberBookingBody = zod.object({
 
 export const DecideBarberBookingResponse = zod.object({
   "id": zod.number().int(),
-  "status": zod.enum(['requested', 'confirmed', 'rejected']),
+  "status": zod.enum(['requested', 'confirmed', 'rejected', 'unavailable']),
   "serviceName": zod.string(),
   "servicePrice": zod.number(),
   "currency": zod.string(),
@@ -297,7 +333,11 @@ export const DecideBarberBookingResponse = zod.object({
 /**
  * @summary Request an appointment
  */
-export const createBookingBodyServiceIdMax = 40;
+export const createBookingBodyServiceNameMin = 2;
+export const createBookingBodyServiceNameMax = 80;
+
+export const createBookingBodyCityMin = 2;
+export const createBookingBodyCityMax = 100;
 
 export const createBookingBodyCustomerNameMin = 2;
 export const createBookingBodyCustomerNameMax = 100;
@@ -308,17 +348,26 @@ export const createBookingBodyCustomerPhoneMax = 30;
 export const createBookingBodyAreaMin = 2;
 export const createBookingBodyAreaMax = 120;
 
+export const createBookingBodyLatitudeMin = -90;
+export const createBookingBodyLatitudeMax = 90;
+
+export const createBookingBodyLongitudeMin = -180;
+export const createBookingBodyLongitudeMax = 180;
+
 export const createBookingBodyTimeRegExp = new RegExp('^([01][0-9]|2[0-3]):[0-5][0-9]$');
 export const createBookingBodyNoteMax = 500;
 
 
 
 export const CreateBookingBody = zod.object({
-  "barberId": zod.number().int(),
-  "serviceId": zod.string().min(1).max(createBookingBodyServiceIdMax),
+  "serviceName": zod.string().min(createBookingBodyServiceNameMin).max(createBookingBodyServiceNameMax),
+  "city": zod.string().min(createBookingBodyCityMin).max(createBookingBodyCityMax),
+  "locationMode": zod.enum(['manual', 'gps']),
   "customerName": zod.string().min(createBookingBodyCustomerNameMin).max(createBookingBodyCustomerNameMax),
   "customerPhone": zod.string().min(createBookingBodyCustomerPhoneMin).max(createBookingBodyCustomerPhoneMax),
-  "area": zod.string().min(createBookingBodyAreaMin).max(createBookingBodyAreaMax),
+  "area": zod.string().min(createBookingBodyAreaMin).max(createBookingBodyAreaMax).nullish(),
+  "latitude": zod.number().min(createBookingBodyLatitudeMin).max(createBookingBodyLatitudeMax).nullish(),
+  "longitude": zod.number().min(createBookingBodyLongitudeMin).max(createBookingBodyLongitudeMax).nullish(),
   "date": zod.coerce.date(),
   "time": zod.string().regex(createBookingBodyTimeRegExp),
   "note": zod.string().max(createBookingBodyNoteMax).nullish()
@@ -333,10 +382,15 @@ export const CreateBookingResponse = zod.object({
   "id": zod.number().int(),
   "status": zod.enum(['requested']),
   "barberName": zod.string(),
+  "barberPhone": zod.string(),
   "serviceName": zod.string(),
+  "servicePrice": zod.number(),
+  "travelFee": zod.number(),
+  "currency": zod.string(),
   "date": zod.coerce.date(),
   "time": zod.string(),
-  "trackingToken": zod.string().min(createBookingResponseTrackingTokenMin).max(createBookingResponseTrackingTokenMax)
+  "trackingToken": zod.string().min(createBookingResponseTrackingTokenMin).max(createBookingResponseTrackingTokenMax),
+  "attemptCount": zod.number().int()
 })
 
 
@@ -355,11 +409,13 @@ export const GetBookingStatusQueryParams = zod.object({
 
 export const GetBookingStatusResponse = zod.object({
   "id": zod.number().int(),
-  "status": zod.enum(['requested', 'confirmed', 'rejected']),
-  "barberName": zod.string(),
+  "status": zod.enum(['requested', 'confirmed', 'rejected', 'unavailable']),
+  "barberName": zod.string().nullable(),
   "serviceName": zod.string(),
   "date": zod.coerce.date(),
-  "time": zod.string()
+  "time": zod.string(),
+  "attemptCount": zod.number().int(),
+  "lastAttemptReason": zod.union([zod.literal('rejected'),zod.literal('timeout'),zod.literal(null)]).nullable()
 })
 
 

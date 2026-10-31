@@ -18,6 +18,7 @@ import {
   UpdateAdminPaymentCountryResponse,
 } from "@workspace/api-zod";
 import { db, barbersTable, paymentCountrySettingsTable } from "@workspace/db";
+import { isTrustedBrowserOrigin } from "../lib/google-identity";
 import { getPaymentCountries, isPaymentCountryCode } from "../lib/payment-countries";
 
 const router: IRouter = Router();
@@ -27,6 +28,18 @@ const ADMIN_SESSION_DURATION_MS = 8 * 60 * 60 * 1000;
 const LOGIN_FAILURE_LIMIT = 8;
 const LOGIN_FAILURE_WINDOW_MS = 15 * 60 * 1000;
 const failedLoginAttempts = new Map<string, { count: number; expiresAt: number }>();
+
+router.use("/admin", (req, res, next) => {
+  if (!["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
+    next();
+    return;
+  }
+  if (isTrustedBrowserOrigin(req)) {
+    next();
+    return;
+  }
+  res.status(403).json({ error: "Untrusted request origin" });
+});
 
 function loginAttemptKey(req: Request): string {
   return req.ip || req.socket.remoteAddress || "unknown";
@@ -116,11 +129,12 @@ function setAdminCookie(req: Request, res: Response): void {
   const expiration = String(Date.now() + ADMIN_SESSION_DURATION_MS);
   const token = `${expiration}.${signatureFor(expiration, sessionSecret)}`;
   const forwardedProtocol = req.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const secure = req.secure || forwardedProtocol === "https";
 
   res.cookie(ADMIN_COOKIE, token, {
     httpOnly: true,
-    secure: req.secure || forwardedProtocol === "https",
-    sameSite: "strict",
+    secure,
+    sameSite: secure ? "none" : "strict",
     path: ADMIN_COOKIE_PATH,
     maxAge: ADMIN_SESSION_DURATION_MS,
   });
@@ -174,11 +188,14 @@ router.post("/admin/session", (req, res): void => {
   res.json(LoginAdminResponse.parse({ authenticated: true }));
 });
 
-router.delete("/admin/session", (_req, res): void => {
+router.delete("/admin/session", (req, res): void => {
   res.setHeader("Cache-Control", "no-store");
+  const forwardedProtocol = req.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const secure = req.secure || forwardedProtocol === "https";
   res.clearCookie(ADMIN_COOKIE, {
     httpOnly: true,
-    sameSite: "strict",
+    secure,
+    sameSite: secure ? "none" : "strict",
     path: ADMIN_COOKIE_PATH,
   });
   res.json(LogoutAdminResponse.parse({ authenticated: false }));

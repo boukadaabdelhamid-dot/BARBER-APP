@@ -1,3 +1,4 @@
 - [Orval parameter naming](orval-param-naming.md) — Mixed path and query parameters can generate duplicate `<OperationId>Params` exports.
 - [BarberLink business model](barberlink-business-model.md) — Start free, later take a percentage per booking; WhatsApp is the support channel.
 - [Vite public environment values](vite-shared-public-env.md) — Verify shared public variables in the transformed dev module; Vite's default prefix omits non-VITE names.
+- [Cross-origin auth sessions](railway-cross-origin-sessions.md) — Split web/API Railway origins need Secure cross-site cookies and trusted-Origin checks for mutations.
